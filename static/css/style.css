@@ -1,0 +1,1013 @@
+* {
+  box-sizing: border-box;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Define a consistent color palette */
+:root {
+  --imessage-blue: #007aff; /* iMessage blue */
+  --imessage-blue-hover: #006fe6; /* Darker blue on hover */
+  --imessage-gray: #e5e5ea; /* iMessage gray */
+  --imessage-light-gray: #f0f0f0; /* Light gray for backgrounds */
+  --imessage-dark-gray: #333; /* Dark gray for text */
+  --imessage-light-text: #555; /* Light gray for secondary text */
+  --primary-button: #4285f4; /* Google blue */
+  --primary-button-hover: #3367d6; /* Darker blue on hover */
+  --secondary-button: #f8f9fa; /* Light gray */
+  --secondary-button-hover: #e8eaed; /* Darker gray on hover */
+}
+
+body {
+  background: var(--imessage-light-gray);
+}
+
+sup {
+  font-size: 0.5em;
+  font-weight: 400;
+}
+
+/* Base Modal Styles - Universal for all modals */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgb(0, 0, 0); /* Fallback color */
+  background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+
+.modal-content {
+  background-color: #fefefe;
+  margin: 5% auto; /* 5% from the top and centered */
+  padding: 0; /* No default padding - controlled by child elements */
+  border: none;
+  width: 90%; /* Use a percentage for responsive width */
+  max-width: 550px; /* Standard max width for all modals */
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.close {
+  color: #fff; /* White close button for all modal headers */
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  position: absolute;
+  right: 30px;
+  top: 20px;
+}
+
+.close:hover,
+.close:focus {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+}
+
+/* Modal Header - Base Styles */
+.modal-header {
+  padding: 20px;
+  text-align: center;
+  color: white;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+}
+
+/* Modal Theme Variations */
+.modal-header--blue {
+  background-color: var(--imessage-blue);
+}
+
+.modal-header--primary {
+  background-color: var(--imessage-blue);
+}
+
+/* Modal Icon Container */
+.modal-icon-container {
+  margin-bottom: 10px;
+}
+
+.modal-icon {
+  font-size: 3rem;
+  display: inline-block;
+}
+
+/* Animated Icons */
+.modal-icon--pulse {
+  animation: pulse-glow 2s infinite alternate;
+}
+
+.modal-icon--shine {
+  animation: shine 2s infinite alternate;
+}
+
+@keyframes pulse-glow {
+  from {
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
+    transform: scale(1);
+  }
+  to {
+    text-shadow: 0 0 15px rgba(255, 255, 255, 0.8),
+      0 0 20px rgba(255, 255, 255, 0.5);
+    transform: scale(1.05);
+  }
+}
+
+@keyframes shine {
+  from {
+    text-shadow: 0 0 5px gold, 0 0 10px gold;
+  }
+  to {
+    text-shadow: 0 0 10px gold, 0 0 20px gold;
+  }
+}
+
+/* Modal Title and Subtitle */
+.modal-header h2 {
+  margin: 10px 0 5px 0;
+  color: white;
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.modal-subtitle {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* Modal Body */
+.modal-body {
+  padding: 20px;
+  color: var(--imessage-dark-gray);
+  line-height: 1.5;
+}
+
+/* Modal Footer */
+.modal-footer {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* Button Styles - Unified */
+.btn {
+  padding: 12px 15px;
+  border: none;
+  border-radius: 50px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  text-align: center;
+}
+
+.btn--primary {
+  background-color: var(--imessage-blue);
+  color: white;
+}
+
+.btn--primary:hover {
+  background-color: var(--imessage-blue-hover);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn--secondary {
+  background-color: var(--secondary-button);
+  color: var(--imessage-dark-gray);
+}
+
+.btn--secondary:hover {
+  background-color: var(--secondary-button-hover);
+}
+
+#submit-case {
+  width: 100%;
+}
+
+/* Unified Form Elements */
+.input-group {
+  margin-bottom: 20px;
+}
+
+.input-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: var(--imessage-dark-gray);
+}
+
+/* Textarea Style */
+.modal-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: Arial, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: border-color 0.3s ease;
+}
+
+.modal-textarea:focus {
+  border-color: var(--imessage-blue);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(67, 160, 71, 0.2);
+}
+
+/* Divider */
+.divider {
+  text-align: center;
+  margin: 20px 0;
+  position: relative;
+}
+
+.divider::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: #ddd;
+  z-index: 0;
+}
+
+.divider span {
+  background-color: white;
+  padding: 0 15px;
+  position: relative;
+  z-index: 1;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+/* Enhanced Divider */
+.divider--success {
+  margin: 15px 0;
+}
+
+.divider--success::before {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(67, 160, 71, 0.5),
+    transparent
+  );
+}
+
+.divider--success span {
+  color: #43a047;
+  font-weight: 600;
+  padding: 0 20px;
+}
+
+/* Features Section */
+.features {
+  display: flex;
+  justify-content: space-around;
+  margin: 20px 0;
+  text-align: center;
+}
+
+.feature-item {
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.feature-item span {
+  font-size: 2rem;
+  margin-bottom: 10px;
+}
+
+.feature-item p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--imessage-light-text);
+}
+
+/* Stats Container */
+.stats-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Enhanced stat-icon styling */
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background-color: #f1f5fd;
+  margin-right: 15px;
+  font-size: 24px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(66, 133, 244, 0.2);
+  flex-shrink: 0;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-info h3 {
+  margin: 0 0 5px 0;
+  font-size: 16px;
+  color: #444;
+}
+
+.stat-info p {
+  margin: 0 0 10px 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #333;
+}
+
+/* Progress container and bar styling */
+.progress-container {
+  width: 100%;
+  height: 8px;
+  background-color: #e0e0e0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin: 5px 0;
+}
+
+/* Add animation for progress bar */
+@keyframes progressFill {
+  from {
+    width: 0;
+  }
+  to {
+    width: var(--progress-width);
+  }
+}
+
+/* Additional animations for the leaderboard modal */
+@keyframes slideIn {
+  from {
+    transform: translateY(-50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Instructions Steps */
+.instructions-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.instruction-step {
+  display: flex;
+  background-color: #f8f9fa;
+  border-radius: 10px;
+  padding: 15px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.instruction-step:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.step-number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: var(--imessage-blue);
+  color: white;
+  font-weight: bold;
+  font-size: 1.1rem;
+  margin-right: 15px;
+  flex-shrink: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.step-content h3,
+.step-content p {
+  margin: 0;
+}
+
+/* Result Box */
+.result-box {
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  padding: 15px;
+  margin-top: 10px;
+}
+
+/* Result Box Enhancements */
+.result-box {
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  padding: 18px;
+  margin-top: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  border: 1px solid #e7eaed;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.result-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.result-title {
+  margin: 0 0 12px 0;
+  color: #333;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.url-container {
+  background-color: #ffffff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px 15px;
+  margin-bottom: 15px;
+  position: relative;
+}
+
+.url-text {
+  margin: 0;
+  padding: 5px 0;
+  font-family: monospace;
+  word-break: break-all;
+  color: #333;
+  font-size: 0.9rem;
+}
+
+.url-actions {
+  display: flex;
+  align-items: center;
+  margin-top: 10px;
+  position: relative;
+}
+
+.btn--with-icon {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.copy-icon {
+  font-size: 1.1em;
+}
+
+.copy-feedback {
+  position: absolute;
+  background-color: #333;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  right: 0;
+  top: -30px;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.copy-feedback.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.share-tip {
+  margin: 10px 0 0 0;
+  color: #666;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+
+/* Result Container Styles - Enhanced */
+#result-container {
+  animation: fadeScale 0.5s ease-out;
+  margin-top: 25px;
+}
+
+@keyframes fadeScale {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Success Animation */
+.success-animation {
+  display: flex;
+  justify-content: center;
+  margin: 15px 0 5px;
+}
+
+.checkmark-circle {
+  width: 56px;
+  height: 56px;
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+  background-color: #43a047;
+  border-radius: 50%;
+  box-shadow: 0 2px 10px rgba(67, 160, 71, 0.5);
+}
+
+.checkmark {
+  border-radius: 5px;
+}
+
+.checkmark.draw:after {
+  content: "";
+  position: absolute;
+  width: 30px;
+  height: 15px;
+  border-bottom: 4px solid #fff;
+  border-left: 4px solid #fff;
+  top: 18px;
+  left: 13px;
+  transform: rotate(-45deg);
+  animation: checkmarkAnimation 0.3s ease-out;
+}
+
+@keyframes checkmarkAnimation {
+  0% {
+    height: 0;
+    width: 0;
+    opacity: 0;
+  }
+  40% {
+    height: 0;
+    width: 30px;
+    opacity: 1;
+  }
+  100% {
+    height: 15px;
+    width: 30px;
+    opacity: 1;
+  }
+}
+
+/* Responsive styles for result container */
+@media (max-width: 600px) {
+  .result-box {
+    padding: 15px;
+  }
+
+  .url-container {
+    padding: 8px 12px;
+  }
+
+  .result-title {
+    font-size: 1rem;
+  }
+}
+
+/* Common Media Query for all Modals */
+@media (max-width: 600px) {
+  .modal-content {
+    width: 95%;
+    margin: 10px auto;
+  }
+
+  .modal-header {
+    padding: 15px;
+  }
+
+  .modal-icon {
+    font-size: 2.5rem;
+  }
+
+  .modal-header h2 {
+    font-size: 1.5rem;
+  }
+
+  .modal-body {
+    padding: 15px;
+  }
+
+  .features {
+    flex-direction: column;
+    gap: 15px;
+  }
+
+  .stats-container {
+    gap: 10px;
+  }
+
+  .stat-card {
+    padding: 12px;
+  }
+
+  .instruction-step {
+    padding: 12px;
+  }
+
+  .step-number {
+    width: 25px;
+    height: 25px;
+    font-size: 1rem;
+    margin-right: 10px;
+  }
+}
+
+h2,
+h3 {
+  font-family: Arial, sans-serif;
+  color: var(--imessage-dark-gray); /* Updated heading text color */
+}
+
+p,
+ul,
+ol {
+  font-family: Arial, sans-serif; /* Ensure consistent font-family */
+  color: var(--imessage-light-text); /* Updated paragraph text color */
+  line-height: 1.5; /* Improve readability */
+}
+
+ul,
+ol {
+  padding-left: 20px; /* Indent list items */
+}
+
+#celebration {
+  font-family: Arial, sans-serif;
+  color: green;
+  text-align: center;
+  margin-top: 20px;
+}
+
+.confetti-piece {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background-color: randomColor; /* Replace with a function to get a random color */
+  animation: fall 2s infinite;
+}
+
+@keyframes fall {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(100vh);
+  }
+}
+
+#instructions-modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 2; /* Sit on top of the modal */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+}
+
+#container {
+  height: calc(var(--vh, 1vh) * 100);
+  width: 100%;
+  margin: 0 auto;
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  left: 50%;
+  top: 0;
+  transform: translateX(-50%);
+}
+
+#chat-interface {
+  max-width: 500px; /* Limit width of chat box */
+  min-width: 500px; /* Minimum width of chat box */
+  position: relative;
+  display: flex;
+  margin: 0 auto;
+  flex-direction: column;
+  overflow-y: scroll;
+  padding: 0 10px 10px 10px;
+  background-color: var(
+    --imessage-light-gray
+  ); /* Updated light background for chat interface */
+  border-radius: 10px; /* Rounded corners */
+}
+
+#chat-box {
+  flex: 1;
+  overflow-y: auto; /* Allow scrolling */
+  width: 100%;
+  margin: 0 auto; /* Center chat box */
+  display: flex;
+  flex-direction: column;
+  -ms-overflow-style: none; /* Internet Explorer 10+ */
+  scrollbar-width: none; /* Firefox */
+  min-height: 123.5px;
+}
+
+.chat-box::-webkit-scrollbar {
+  display: none; /* Safari and Chrome */
+}
+
+.message {
+  margin: 5px 0;
+  padding: 10px;
+  border-radius: 15px; /* Rounded message bubbles */
+  max-width: 70%; /* Limit width of messages */
+  word-wrap: break-word; /* Break long words */
+  font-family: Arial, sans-serif; /* Add this line for sans-serif font */
+}
+
+.case-loading-text {
+  font-style: italic; /* Italicize loading text */
+  font-family: Arial, sans-serif; /* Add this line for sans-serif font */
+}
+
+.case-loading-container {
+  position: absolute;
+  width: 100%;
+}
+
+.user-message {
+  background-color: var(
+    --imessage-blue
+  ); /* Updated user message bubble color */
+  color: white; /* Text color */
+  align-self: flex-end; /* Align user messages to the right */
+  font-family: Arial, sans-serif; /* Add this line for sans-serif font */
+}
+
+.llm-message {
+  background-color: var(--imessage-gray); /* Updated LLM message bubble color */
+  color: black; /* Text color */
+  align-self: flex-start; /* Align LLM messages to the left */
+  font-family: Arial, sans-serif; /* Add this line for sans-serif font */
+}
+
+#input-area {
+  display: flex;
+  margin-top: 10px; /* Space above input area */
+}
+
+#user-input {
+  flex: 1; /* Allow input to take available space */
+  padding: 10px;
+  border: 1px solid #ccc; /* Border for input */
+  border-radius: 5px; /* Rounded corners */
+  margin-right: 10px; /* Space between input and button */
+}
+
+#send-button {
+  padding: 10px 15px; /* Button padding */
+  background-color: var(--imessage-blue); /* Updated button background */
+  color: white; /* Text color */
+  border: none; /* Remove border */
+  border-radius: 5px; /* Rounded corners */
+  cursor: pointer; /* Pointer cursor on hover */
+  transition: background-color 0.2s ease; /* Smooth transition for hover effect */
+}
+
+#send-button:hover {
+  background-color: #005bb5; /* Darker blue on hover */
+}
+
+/* Add styles for disabled state */
+#send-button:disabled,
+#send-button.disabled {
+  background-color: #cccccc; /* Gray background when disabled */
+  cursor: not-allowed; /* Show not-allowed cursor */
+  opacity: 0.7; /* Reduce opacity */
+}
+
+#timer {
+  margin: 10px 0;
+  font-family: Arial, sans-serif; /* Add this line for sans-serif font */
+}
+
+/* Update existing styles for responsiveness */
+@media (max-width: 768px) {
+  #chat-interface {
+    padding: 5px; /* Reduce padding on smaller screens */
+    max-width: 100%; /* Limit width of chat box */
+    min-width: 100%; /* Minimum width of chat box */
+  }
+
+  #chat-box {
+    padding: 0 5px; /* Reduce padding for chat box */
+    max-height: calc(var(--vh, 1vh) * 100 - 52px - 77px - 10px);
+  }
+
+  .message {
+    max-width: 90%; /* Allow messages to take more width */
+  }
+
+  #user-input {
+    padding: 8px; /* Adjust padding for input field */
+  }
+
+  #send-button {
+    padding: 8px 10px; /* Adjust button padding */
+  }
+
+  #timer {
+    font-size: 18px; /* Reduce font size for timer */
+  }
+
+  /* Adjust modal styles */
+  .modal-content {
+    padding: 0; /* Adjust padding for modals */
+    width: 90%; /* Increase width for modals on smaller screens */
+  }
+}
+
+@media (max-width: 480px) {
+  #chat-interface {
+    position: sticky;
+    bottom: 0;
+    max-height: calc(var(--vh, 1vh) * 100 - 52px);
+  }
+
+  #timer {
+    font-size: 16px; /* Further reduce font size for timer */
+  }
+
+  .message {
+    max-width: 95%; /* Allow even more width for messages */
+  }
+
+  #send-button {
+    padding: 6px 8px; /* Further adjust button padding */
+    font-size: 1.15em;
+  }
+
+  #input-area {
+    flex-direction: column; /* Stack input area elements vertically */
+    margin-top: 5px; /* Reduce margin */
+    height: 77px;
+    padding-bottom: env(
+      safe-area-inset-bottom
+    ); /* Add space for mobile bottom bar */
+  }
+
+  #user-input {
+    margin-bottom: 5px; /* Space between input and button */
+    margin-right: 0;
+    font-size: 1.15em;
+  }
+}
+
+/* Header Styling */
+#header-container {
+  background: linear-gradient(to bottom, #f8f8f8, #efefef);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+#header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  width: 100%;
+  box-sizing: border-box;
+  max-width: 500px;
+  margin: 0 auto;
+  color: #444;
+}
+
+#timer {
+  margin: 0;
+  font-size: 1.1rem;
+  color: black;
+}
+
+.actions-section {
+  display: flex;
+  align-items: center;
+}
+
+.header-button {
+  background-color: #f0f0f0;
+  border: 1px solid #e0e0e0;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  margin-left: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #555;
+  padding: 0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.header-button:hover {
+  background-color: #e6e6e6;
+  transform: translateY(-2px);
+  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+}
+
+.header-button:active {
+  transform: translateY(0);
+  background-color: #dedede;
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+#view-leaderboard-icon {
+  display: none;
+}
+
+.clear-button {
+  background-color: #fff0db;
+  border-color: #ffe0b2;
+  color: #ff9800;
+  display: none;
+}
+
+.clear-button:hover {
+  background-color: #ffecd1;
+  border-color: #ffcc80;
+}
+
+#heatmap {
+  display: flex;
+  flex-wrap: wrap;
+  width: 220px;
+  gap: 2px;
+  margin: 10px auto;
+}
+.heatmap-cell {
+  width: 20px;
+  height: 20px;
+  background-color: #ddd;
+}
+
+/* Media Queries for Header Responsiveness */
+@media (max-width: 480px) {
+  #header {
+    padding: 10px;
+  }
+
+  .logo {
+    font-size: 1.5rem;
+  }
+
+  .app-title {
+    font-size: 1.2rem;
+  }
+
+  #timer {
+    font-size: 0.9rem;
+  }
+
+  .header-button {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+    margin-left: 6px;
+  }
+}

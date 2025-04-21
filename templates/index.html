@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+    <title>Diagnose me(beta)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="{{ url_for('static', filename='js/confetti.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧑‍⚕️</text></svg>"
+  />
+    <style>
+        /* Add styling to properly render newlines in messages */
+        .message {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .llm-message {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        /* Typing indicator styles */
+        .typing-indicator {
+            background-color: #e6e7eb;
+            width: auto;
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: inline-flex;
+            align-items: center;
+            margin: 8px 0;
+            align-self: flex-start;
+            position: relative;
+            max-width: 80%;
+        }
+
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #93979c;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 4px;
+            animation: bouncingLoader 0.3s infinite alternate;
+        }
+
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes bouncingLoader {
+            0% {
+                transform: translateY(0);
+                opacity: 0.5;
+            }
+            100% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+        
+        /* Case loading indicator styles */
+        .case-loading-container {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        
+        .case-loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1.5s linear infinite;
+            margin: 0 auto 15px auto;
+        }
+        
+        .case-loading-text {
+            color: #666;
+            font-weight: 500;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body style="margin: 0">
+    <div id="container">
+        <div id="header-container">
+            <div id="header">
+                <div id="timer">00:00</div>
+                <div id="custom-case-indicator" style="display: none; color: #ffc107; font-weight: bold; margin-left: 10px;"></div>
+                <div class="actions-section">
+                    <button id="view-instructions-icon" class="header-button" title="Instructions">📖</button>
+                    <button id="create-case-icon" class="header-button" title="Create Case">📝</button>
+                    <button id="view-leaderboard-icon" class="header-button" title="Leaderboard">🏆</button>
+                    <button id="clear-history-button" class="header-button clear-button" title="Clear History">🔄</button>
+                </div>
+            </div>
+        </div>
+        <div id="chat-interface">
+            <div id="chat-box"></div>
+            
+            <!-- New case loading indicator -->
+            <div id="case-loading-indicator" class="case-loading-container">
+                <div class="case-loading-spinner"></div>
+                <div class="case-loading-text">Checking in patient...</div>
+            </div>
+            
+            <!-- Existing chat typing indicator -->
+            <div id="loading-indicator" class="typing-indicator" style="display: none;">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="Type your question here..." autofocus>
+                <button id="send-button">Send</button>
+            </div>
+        </div>
+    </div>
+    <!-- Adding the new welcome modal -->
+    <div id="welcome-modal" class="modal">
+        <div class="modal-content">
+            <span id="close-welcome-modal" class="close">&times;</span>
+            <div class="modal-header modal-header--primary">
+                <div class="modal-icon-container">
+                    <span class="modal-icon modal-icon--pulse">🧑‍⚕️</span>
+                </div>
+                <h2>Diagnose me!<sup>(beta)</sup></h2>
+                <p class="modal-subtitle">Test your clinical diagnostic skills</p>
+            </div>
+            <div class="modal-body">
+                <p>Practice diagnosing patients with various conditions in this medical simulation game. Ask relevant questions, order labs, conduct physical exams, and make your diagnosis.</p>
+                
+                <div class="features">
+                    <div class="feature-item">
+                        <span>🔍</span>
+                        <p>Investigate symptoms</p>
+                    </div>
+                    <div class="feature-item">
+                        <span>📊</span>
+                        <p>Order lab tests</p>
+                    </div>
+                    <div class="feature-item">
+                        <span>🏆</span>
+                        <p>Beat your best time</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="start-game" class="btn btn--primary">Start Game</button>
+                <button id="view-instructions" class="btn btn--secondary">View Instructions</button>
+            </div>
+        </div>
+    </div>
+    <div id="leaderboard-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header modal-header--primary">
+                <span id="close-leaderboard-modal" class="close">&times;</span>
+                <div class="modal-icon-container">
+                    <span class="modal-icon modal-icon--shine">🏆</span>
+                </div>
+                <h2>Your Achievements</h2>
+            </div>
+            <div class="modal-body">
+                <div class="stats-container">
+                    <div class="stat-card">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-info">
+                            <h3>Personal Best Time</h3>
+                            <p id="personal-best-time">N/A</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🔥</div>
+                        <div class="stat-info">
+                            <h3>Daily Streak</h3>
+                            <p id="daily-streak">0 days</p>
+                        </div>
+                    </div>
+                    
+                    <div class="stat-card">
+                        <div class="stat-icon">🧠</div>
+                        <div class="stat-info">
+                            <h3>Games Played</h3>
+                            <p id="games-played">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div id="heatmap"></div>
+            </div>
+        </div>
+    </div>
+    <div id="create-case-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header modal-header--blue">
+                <span id="close-create-case-modal" class="close">&times;</span>
+                <div class="modal-icon-container">
+                    <span class="modal-icon">📝</span>
+                </div>
+                <h2>Create Your Own Case</h2>
+                <p class="modal-subtitle">Design a custom medical scenario for others to solve</p>
+            </div>
+            <div class="modal-body">
+                <div class="input-group">
+                    <textarea id="disease-name" class="modal-textarea" placeholder="What disease do you want the player to guess?" rows="1"></textarea>
+                </div>
+                <div class="input-group">
+                    <textarea id="case-description" class="modal-textarea" placeholder="(Optional)Describe details of the case, like symptoms, medical history..." rows="6"></textarea>
+                </div>
+                <button id="submit-case" class="btn btn--primary">Create Case</button>
+                
+                <div id="result-container" style="display: none;">
+                    <div class="success-animation">
+                        <div class="checkmark-circle">
+                            <div class="checkmark draw"></div>
+                        </div>
+                    </div>
+                    <div class="divider divider--success"><span>Case Created Successfully</span></div>
+                    <div class="result-box">
+                        <h4 class="result-title">Share your medical case</h4>
+                        <div class="url-container">
+                            <p id="case-url-message" class="url-text"></p>
+                            <div class="url-actions">
+                                <button id="copy-url" class="btn btn--secondary btn--with-icon">
+                                    <span class="copy-icon">📋</span> Copy URL
+                                </button>
+                                <div class="copy-feedback">Copied!</div>
+                            </div>
+                        </div>
+                        <p class="share-tip">Share this URL with others to let them try solving your case!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="celebration">
+        <div id="confetti"></div> <!-- Placeholder for celebratory graphics -->
+    </div>
+    <div id="instructions-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header modal-header--blue">
+                <span id="close-instructions-modal" class="close">&times;</span>
+                <div class="modal-icon-container">
+                    <span class="modal-icon modal-icon--pulse">📖</span>
+                </div>
+                <h2>Game Instructions</h2>
+                <p class="modal-subtitle">Learn how to play</p>
+            </div>
+            <div class="modal-body">
+                <div class="instructions-steps">
+                    <div class="instruction-step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h3>Start the Game</h3>
+                            <p>Click on "Start Game" to begin your diagnostic journey.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h3>Gather Information</h3>
+                            <p>Ask questions to learn about symptoms, medical history, and  relevant details. You can also ask for labs or physical exam results.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h3>Make Your Diagnosis</h3>
+                            <p>When ready, give a diagnosis by telling the patient what you think they may have.</p>
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-step">
+                        <div class="step-number">4</div>
+                        <div class="step-content">
+                            <h3>Track Your Progress</h3>
+                            <p>Your time is tracked. Try to beat your personal best!</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Function to scroll chat box to bottom smoothly
+        function scrollToBottom() {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.scrollTo({
+                top: chatBox.scrollHeight,
+                behavior: 'smooth'
+            });
+        }
+        
+        // Set up MutationObserver to detect changes in the chat box
+        document.addEventListener('DOMContentLoaded', () => {
+            const chatBox = document.getElementById('chat-box');
+            
+            // Create an observer instance
+            const observer = new MutationObserver((mutations) => {
+                // When the chat box content changes, scroll to bottom
+                scrollToBottom();
+            });
+            
+            // Configuration of the observer
+            const config = { childList: true, subtree: true };
+            
+            // Start observing the chat box
+            observer.observe(chatBox, config);
+            
+            // Also scroll to bottom initially
+            scrollToBottom();
+        });
+
+        // Function to clear chat history and UI
+        function clearChatHistoryAndUI() {
+            const chatBox = document.getElementById('chat-box');
+            chatBox.innerHTML = ''; // Clear chat box UI
+            localStorage.setItem('chatHistory', JSON.stringify([])); // Clear localStorage chat history
+            console.log('Chat history and UI cleared.');
+        }
+    </script>
+</body>
+{% if custom_patient_context %}
+  <script>
+    window.custom_patient_context = {{ custom_patient_context|tojson }};
+  </script>
+{% endif %}
+</html>
