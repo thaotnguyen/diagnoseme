@@ -4,11 +4,14 @@ import json
 import base64
 import hashlib
 from cryptography.fernet import Fernet
+from dotenv import load_dotenv
+project_folder = os.path.expanduser('~/Development/diagnoseme')  # adjust as appropriate
+load_dotenv(os.path.join(project_folder, '.env'))
 
 # Get the raw secret from an environment variable.
-raw_key = os.environ.get("FERNET_SECRET_KEY")
-if not raw_key:
-    raise ValueError("Environment variable FERNET_SECRET_KEY is not set")
+raw_key = os.getenv("FERNET_SECRET_KEY")
+if raw_key is None:
+   raise ValueError("Environment variable FERNET_SECRET_KEY is not set")
 
 # Generate a valid 32-byte key using SHA-256 and then Base64-encode it.
 hashed_key = hashlib.sha256(raw_key.encode()).digest()

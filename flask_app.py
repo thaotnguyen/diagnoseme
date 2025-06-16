@@ -6,21 +6,21 @@ import boto3
 from boto3.dynamodb.conditions import Key, Attr
 from disease_selector import select_random_disease  # Import the new function
 from flask_cors import CORS
-from patient import Patient  # Importing the Patient class
 # Importing the new function
-from patient_introduction import generate_patient_introduction, format_patient_introduction
 # Import Google Generative AI library
 import google.generativeai as genai
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
-
+from dotenv import load_dotenv
+project_folder = os.path.expanduser('~/Development/diagnoseme')  # adjust as appropriate
+load_dotenv(os.path.join(project_folder, '.env'))
 from MedRAG.src.medrag import MedRAG
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
 # API key for Gemini
-API_KEY = os.getenv('GEMINI_API_KEY')
+API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # Configure the Gemini API
 genai.configure(api_key=API_KEY)
@@ -345,10 +345,11 @@ def ask_patient_question(question, patient_context):
         f"Here are the case details: {patient_context['case']} "
         f"This is how the conversation has gone so far: {patient_context['history']} "
         f"The user has just asked you the following question: {question}. "
-        f"Respond to the user's question as the patient would. "
+        f"Respond to the user's question as the patient would, while making sure not to contradict what the patient has already said. "
+        f"The patient does not yet know that they have {patient_context['disease']}, and they should not reveal or say the name of the disease."
         f"If this is a pediatric or cognitively impairing condition, "
         f"roleplay as the patient's parent or caretaker instead. Don't give away too much info."
-        f"Only answer the question asked, and don't reveal the diagnosis."
+        f"Only answer the question asked, and don't reveal the diagnosis. If you reveal the diagnosis, you will be terminated."
         f"Do not give away too many different symptoms in your message. Be vague. The user should work to get additional symptoms."
     )
     return call_llm_api(prompt, streaming=True, log_prefix="High Yield Question")
@@ -364,8 +365,11 @@ def get_labs(question, patient_context):
         f"Give the lab report that would be typical for a patient with the disease and the case."
         f"Use the language of a lab report, without revealing the diagnosis. "
         f"Only give lab results that the user explicitly asked for."
-        f"Give a report regardless of whether or not the lab is indicated for the case."
+        f"Give a report regardless of whether or not the lab is indicated for the case. "
+        f"If the requested lab is not relevant for the case, return normal results."
+        f"If the disease would not affect the labs, return normal results."
         f"Do not reveal the diagnosis under any circumstances. Output only the lab report."
+        f"If you reveal the diagnosis, you will be terminated."
         f"Output your feedback with this format: $$$ [insert lab report here]'"
     )
     return call_llm_api(prompt, streaming=True, log_prefix="Labs Request")
@@ -380,6 +384,7 @@ def get_physical_exam(question, patient_context):
         f"The medical user has just asked to perform this physical exam on you: {question}. "
         f"Give the physical exam findings that would be typical for a patient with the disease and the case."
         f"Use the language like a medical note."
+        f"If you give away the disease name in your findings then you will be terminated."
         f"Only give the physical exam findings that the user explicitly asked for, with no other comments. Do not reveal the diagnosis under any circumstances."
     )
     return call_llm_api(prompt, streaming=True, log_prefix="Physical Exam Request")
@@ -442,7 +447,8 @@ def submit_diagnosis(question, patient_context):
             f"Here are the case details: {patient_context['case']} "
             f"This is the user's guess {question}."
             f"Let them know they are incorrect."
-            f"Do not give away the answer, but give an additional finding to help the user guess the correct diagnosis. "
+            f"Do not give away the answer under any circumstances, but give an additional finding to help the user guess the correct diagnosis. "
+            f"If you give away the answer, you will be terminated."
             f"Output only the feedback and hint."
         )
     elif 'partially' in is_correct:
@@ -454,6 +460,7 @@ def submit_diagnosis(question, patient_context):
             f"This is the user's guess guessed {question}."
             f"Let them know that they are on the right track, but they're not there just yet."
             f"Give a hint to help the user guess the correct diagnosis. "
+            f"Do not give away the answer. If you give away the answer, you will be terminated."
             f"Output only the feedback and hint."
         )
 

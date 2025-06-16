@@ -34,11 +34,15 @@ document.addEventListener('DOMContentLoaded', function () {
   const honoluluToday = honoluluNow.toDateString(); // Format: "Tue Jan 01 2023"
 
   // Filter chat history to only keep messages from today (Honolulu time)
-  const filteredChatHistory = existingChatHistory.filter(message => {
+  let filteredChatHistory = existingChatHistory.filter(message => {
     const messageDate = new Date(message.timestamp);
     const messageDateHonolulu = new Date(messageDate.toLocaleString("en-US", honoluluOptions));
     return messageDateHonolulu.toDateString() === honoluluToday;
   });
+
+  if (filteredChatHistory.filter(message => message.type !== 'user').length === 0) {
+    filteredChatHistory = [];
+  }
 
   if (window.custom_patient_context) {  // the server sets this variable if using /case/<token>
     customCaseMode = true;
