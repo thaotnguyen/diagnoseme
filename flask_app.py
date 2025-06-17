@@ -1,3 +1,4 @@
+from MedRAG.src.medrag import MedRAG
 from flask import Flask, render_template, request, jsonify, session, Response, stream_with_context
 import logging
 import json
@@ -12,9 +13,9 @@ import google.generativeai as genai
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
 from dotenv import load_dotenv
-project_folder = os.path.expanduser('~/Development/diagnoseme')  # adjust as appropriate
+project_folder = os.path.expanduser(
+    '~/Development/diagnoseme')  # adjust as appropriate
 load_dotenv(os.path.join(project_folder, '.env'))
-from MedRAG.src.medrag import MedRAG
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -331,8 +332,11 @@ def postgame(question, patient_context):
         f"You are an helpful, knowledgable, and kind AI patient simulator to help people in medicine practice clinical reasoning. "
         f"The user has completed a patient encounter, and here are the case details: {patient_context['disease']} "
         f"This is how the encounter went: {patient_context['history']} "
+        f"You are no longer roleplaying as a patient, but rather as an expert clinician to help the user improve their clinical reasoning skills. "
+        f"If it hasn't already been mentioned in this conversation, have a brief Q&A discussion about the disease, its management, and any relevant clinical pearls. "
+        f"If it hasn't been mentioned yet, let the user know that at this point, they've already completed the game, and everything they do now is just for fun. "
         f"The user has just asked you the following question: {question}. "
-        f"Continue the conversation."
+        f"Continue the conversation. Make sure the conversation flows naturally and that you are not repeating information that the user already knows. "
     )
     return call_llm_api(prompt, streaming=True, log_prefix="Postgame question")
 
@@ -394,10 +398,10 @@ def get_clinical_feedback(patient_context):
     """Function to provide feedback on the student's performance."""
     prompt = (
         f"You are an expert medical educator and clinician helping medical students practice clinical reasoning. "
-        f"Give celebratory feedback on the user's performance in the roleplay. "
-        f"Start by telling them that they got the diagnosis of {patient_context['disease']} correct."
-        f"Include what the user did well and what they could improve on."
-        f"End with a positive note to encourage the user."
+        f"The user has just correctly diagnosed the patient with {patient_context['disease']}. "
+        f"Provide brief, celebratory feedback on their performance. "
+        f"Mention one thing they did well. "
+        f"Encourage them to ask follow-up questions about the case, their performance, the disease, or its management. "
         f"Here is the transcript of the clinical encounter, with user messages and patient responses: {'\n'.join(patient_context['history'])} "
         f"Output your feedback with this format: '%%% [insert feedback here]'"
     )
@@ -419,10 +423,14 @@ def get_llm_diagnosis_match(user_diagnosis, correct_diagnosis):
 
 def get_llm_response(question, patient_context):
     """Function to interact with the LLM API and get a response with context."""
-    if patient_context['completed']:
+    if patient_context.get('completed', False):  # Check if the game is marked as completed
+        # Route to postgame for follow-up
         return postgame(question, patient_context)
     else:
-        route = route_question(question)[0]
+        route = ''.join(c for c in route_question(
+            question) if c.isalpha()).upper()
+        logging.info(f"Question route: {route}")
+
         if route == 'A':
             return ask_patient_question(question, patient_context)
         elif route == 'B':
@@ -431,6 +439,12 @@ def get_llm_response(question, patient_context):
             return get_physical_exam(question, patient_context)
         elif route == 'D':
             return submit_diagnosis(question, patient_context)
+        else:
+            # Fallback for unclassified or unexpected routes
+            logging.warning(
+                f"Unknown route '{route}' for question: {question}")
+            # Default to treating as a patient question or provide a generic response
+            return ask_patient_question(question, patient_context)
 
 
 def submit_diagnosis(question, patient_context):

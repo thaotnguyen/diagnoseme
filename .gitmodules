@@ -1,0 +1,3 @@
+[submodule "MedRAG"]
+	path = MedRAG
+	url = git@github.com:thaotnguyen/MedRAG.git

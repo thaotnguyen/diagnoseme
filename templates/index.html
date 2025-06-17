@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-    <title>Diagnose me(beta)</title>
+    <title>Diagnose me (beta)</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="{{ url_for('static', filename='js/confetti.js') }}" defer></script>
     <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
@@ -96,6 +96,7 @@
         <div id="header-container">
             <div id="header">
                 <div id="timer">00:00</div>
+                <!-- <div id="streak-display" style="margin-left: 10px; font-weight: bold; color: #ff9800;"></div> Added streak display -->
                 <div id="custom-case-indicator" style="display: none; color: #ffc107; font-weight: bold; margin-left: 10px;"></div>
                 <div class="actions-section">
                     <button id="view-instructions-icon" class="header-button" title="Instructions">📖</button>
@@ -215,7 +216,7 @@
                     <textarea id="disease-name" class="modal-textarea" placeholder="What disease do you want the player to guess?" rows="1"></textarea>
                 </div>
                 <div class="input-group">
-                    <textarea id="case-description" class="modal-textarea" placeholder="(Optional)Describe details of the case, like symptoms, medical history..." rows="6"></textarea>
+                    <textarea id="case-description" class="modal-textarea" placeholder="(Optional) Describe details of the case, like symptoms, medical history..." rows="6"></textarea>
                 </div>
                 <button id="submit-case" class="btn btn--primary">Create Case</button>
                 
