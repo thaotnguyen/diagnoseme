@@ -410,6 +410,177 @@ document.addEventListener('DOMContentLoaded', function () {
     document.head.appendChild(style);
   }
 
+    function preloadGameCase() {
+    console.log('Preloading game case on page load.');
+    gameLoading = true;
+
+    // Show the case loading indicator instead of the message typing indicator
+    const caseLoadingIndicator = document.getElementById('case-loading-indicator');
+    if (caseLoadingIndicator) {
+      caseLoadingIndicator.style.display = 'block';
+    }
+
+    try {
+      console.log('Making POST request to /start_game to preload case');
+      fetch(customCaseMode ? '/start_custom_game' : '/start_game', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          custom_patient_context: window.custom_patient_context || null,
+        }),
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Successfully preloaded game case data');
+        console.log(data);
+
+        // Re-enable user input
+        userInput.disabled = false;
+        sendButton.disabled = false;
+        sendButton.classList.remove('disabled');
+
+        // Store the preloaded data for later use when the user clicks "Start Game"
+        preloadedGameData = data;
+        gameLoading = false;
+        
+        // Hide the case loading indicator
+        if (caseLoadingIndicator) {
+          caseLoadingIndicator.style.display = 'none';
+        }
+      })
+      .catch(error => {
+        console.error("Error during case preloading:", error);
+        caseLoadingError = true;
+        gameLoading = false;
+        
+        // Hide the case loading indicator on error
+        if (caseLoadingIndicator) {
+          caseLoadingIndicator.style.display = 'none';
+        }
+      });
+    } catch (error) {
+      console.error('Error during game case preloading: ', error);
+      caseLoadingError = true;
+      gameLoading = false;
+      
+      // Hide the case loading indicator on error
+      if (caseLoadingIndicator) {
+        caseLoadingIndicator.style.display = 'none';
+      }
+    }
+  }
+
+  // Function to clear chat history and UI
+  function clearChatHistoryAndUI() {
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML = ''; // Clear chat box UI
+    localStorage.setItem('chatHistory', JSON.stringify([])); // Clear localStorage chat history
+    localStorage.removeItem('patientContext'); // Clear patient context
+    localStorage.removeItem('elapsedTime'); // Clear timer state
+    console.log('Chat history, patient context and UI cleared.');
+  }
+
+  // Start game button click handler - now just displays the preloaded case
+  startGameButton.onclick = function () {
+    welcomeModal.style.display = 'none';
+    console.log('Start game button clicked.');
+
+    // Clear chat history and UI
+    clearChatHistoryAndUI();
+
+    if (caseLoadingError) {
+      // Show error message if preloading failed
+      const chatBox = document.getElementById('chat-box');
+      const errorMessage = document.createElement('div');
+      errorMessage.className = 'message error-message';
+      errorMessage.textContent = 'Error loading game case. Please refresh the page and try again.';
+      chatBox.appendChild(errorMessage);
+      return;
+    }
+    
+    if (gameLoading) {
+      // Show case loading indicator if case is still loading
+      const caseLoadingIndicator = document.getElementById('case-loading-indicator');
+      if (caseLoadingIndicator) {
+        caseLoadingIndicator.style.display = 'block';
+      }
+      
+      // Check every 500ms if the case has loaded
+      const loadingCheck = setInterval(() => {
+        if (!gameLoading && preloadedGameData) {
+          clearInterval(loadingCheck);
+          displayPreloadedCase();
+          
+          // Hide case loading indicator when finished
+          if (caseLoadingIndicator) {
+            caseLoadingIndicator.style.display = 'none';
+          }
+        }
+      }, 500);
+    } else if (preloadedGameData) {
+      // Display the preloaded case immediately if it's ready
+      displayPreloadedCase();
+    }
+  };
+
+  // Function to display the preloaded case data
+  function displayPreloadedCase() {
+    // Disable user input until display is complete
+    userInput.disabled = true;
+    sendButton.disabled = true;
+    sendButton.classList.add('disabled');
+    
+    // Clear the chat box
+    const chatBox = document.getElementById('chat-box');
+    chatBox.innerHTML = '';
+    console.log('Chat box cleared for new game.');
+    
+    // Clear chat history in local storage
+    if (!customCaseMode) {
+      localStorage.setItem('chatHistory', JSON.stringify([]));
+    }
+    console.log('Chat history in local storage cleared.');
+
+    // Store patient context for future messages
+    window.patientContext = {
+      attempts: 2,
+      completed: false,
+      history: [],
+      disease: preloadedGameData.patient_context.disease,
+      case: preloadedGameData.patient_context.case,
+    };
+
+    // Reset timer display but don't start it
+    const timerElement = document.getElementById('timer');
+    timerStarted = false;
+    elapsedTime = 0;
+    timerElement.textContent = formatTime(elapsedTime);
+    clearInterval(timerInterval);
+
+    // Re-enable user input
+    userInput.disabled = false;
+    sendButton.disabled = false;
+    sendButton.classList.remove('disabled');
+
+    // Display the stats in the UI
+    const userStats = getUserStats();
+    updateLeaderboardUI(userStats);
+    
+    console.log('Game initialization complete, user input enabled.');
+  }
+
+  // Instead, get references to the existing modal and close button:
+  const instructionsModal = document.getElementById('instructions-modal');
+  const closeInstructionsButton = document.getElementById('close-instructions-modal');
+
+
 
   // Function to load user stats from local storage when the app is loaded
   function loadUserStats() {
