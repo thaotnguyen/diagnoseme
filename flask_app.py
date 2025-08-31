@@ -25,7 +25,8 @@ API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # Configure the Gemini API
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-2.0-flash')
+model = genai.GenerativeModel('gemini-2.5-flash-lite')
+advanced_model = genai.GenerativeModel('gemini-2.5-flash')
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -62,7 +63,7 @@ def generate_patient_case(disease, case_details=None):
     )
     if not case['Items']:
         print("Case does not exist in DynamoDB, generating a new one.")
-        medrag = MedRAG(llm_name="Google/gemini-2.0-flash", rag=True, follow_up=True,
+        medrag = MedRAG(llm_name="Google/gemini-2.5-flash", rag=True, follow_up=True,
                         retriever_name="MedCPT", corpus_name="Textbooks", corpus_cache=True)
         new_case = medrag.generate_medical_case(disease, case_details)
         dynamodb.put_item(
@@ -208,7 +209,7 @@ def start_custom_game():
 # Refactored function for LLM API calls using the Gemini Python API
 
 
-def call_llm_api(prompt, streaming=False, log_prefix=""):
+def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False):
     """
     Generic function to call the Gemini API with a prompt and handle the response.
 
@@ -226,10 +227,16 @@ def call_llm_api(prompt, streaming=False, log_prefix=""):
 
         if streaming:
             def generate():
-                response = model.generate_content(
-                    prompt,
-                    stream=True
-                )
+                if advanced:
+                    response = advanced_model.generate_content(
+                        prompt,
+                        stream=True
+                    )
+                else:
+                    response = model.generate_content(
+                        prompt,
+                        stream=True
+                    )
                 for chunk in response:
                     if chunk.text:
                         yield f"{chunk.text}\n\n\n"
@@ -237,7 +244,10 @@ def call_llm_api(prompt, streaming=False, log_prefix=""):
 
             return Response(stream_with_context(generate()), mimetype='text/event-stream')
         else:
-            response = model.generate_content(prompt)
+            if advanced:
+                response = advanced_model.generate_content(prompt)
+            else:
+                response = model.generate_content(prompt)
             logging.info(f"{log_prefix} - Received response from Gemini")
             return response.text
     except Exception as e:
@@ -332,13 +342,10 @@ def postgame(question, patient_context):
         f"You are an helpful, knowledgable, and kind AI patient simulator to help people in medicine practice clinical reasoning. "
         f"The user has completed a patient encounter, and here are the case details: {patient_context['disease']} "
         f"This is how the encounter went: {patient_context['history']} "
-        f"You are no longer roleplaying as a patient, but rather as an expert clinician to help the user improve their clinical reasoning skills. "
-        f"If it hasn't already been mentioned in this conversation, have a brief Q&A discussion about the disease, its management, and any relevant clinical pearls. "
-        f"If it hasn't been mentioned yet, let the user know that at this point, they've already completed the game, and everything they do now is just for fun. "
         f"The user has just asked you the following question: {question}. "
         f"Continue the conversation. Make sure the conversation flows naturally and that you are not repeating information that the user already knows. "
     )
-    return call_llm_api(prompt, streaming=True, log_prefix="Postgame question")
+    return call_llm_api(prompt, streaming=True, log_prefix="Postgame question", advanced=True)
 
 
 def ask_patient_question(question, patient_context):
@@ -376,7 +383,7 @@ def get_labs(question, patient_context):
         f"If you reveal the diagnosis, you will be terminated."
         f"Output your feedback with this format: $$$ [insert lab report here]'"
     )
-    return call_llm_api(prompt, streaming=True, log_prefix="Labs Request")
+    return call_llm_api(prompt, streaming=True, log_prefix="Labs Request", advanced=True)
 
 
 def get_physical_exam(question, patient_context):
@@ -387,11 +394,15 @@ def get_physical_exam(question, patient_context):
         f"Here are the case details: {patient_context['case']} "
         f"The medical user has just asked to perform this physical exam on you: {question}. "
         f"Give the physical exam findings that would be typical for a patient with the disease and the case."
+        f"Provide only the findings that the user explicitly asked for. Do not over-provide findings."
+        f"For example, if they just asked to look at something, only show results of inspection and not the rest of the physical exam."
+        f"If they ask for something without being specific enough, give them only vague findings."
+        f"If they ask for something very specific, provide detailed findings."
         f"Use the language like a medical note."
         f"If you give away the disease name in your findings then you will be terminated."
         f"Only give the physical exam findings that the user explicitly asked for, with no other comments. Do not reveal the diagnosis under any circumstances."
     )
-    return call_llm_api(prompt, streaming=True, log_prefix="Physical Exam Request")
+    return call_llm_api(prompt, streaming=True, log_prefix="Physical Exam Request", advanced=True)
 
 
 def get_clinical_feedback(patient_context):
@@ -399,13 +410,16 @@ def get_clinical_feedback(patient_context):
     prompt = (
         f"You are an expert medical educator and clinician helping medical students practice clinical reasoning. "
         f"The user has just correctly diagnosed the patient with {patient_context['disease']}. "
-        f"Provide brief, celebratory feedback on their performance. "
-        f"Mention one thing they did well. "
-        f"Encourage them to ask follow-up questions about the case, their performance, the disease, or its management. "
         f"Here is the transcript of the clinical encounter, with user messages and patient responses: {'\n'.join(patient_context['history'])} "
+        f"Provide brief, congratulatory feedback on their performance. "
+        f"Mention one thing they did well. "
+        f"Comment on one area for improvement. For example (not limited to these): Did they ask for all red flag symptoms correctly? Did they prematurely jump to labs? Did they show empathy?"
+        f"Remember to keep your feedback constructive and focused on the student's performance."
+        f"Bold especially salient points."
+        f"Only reference things that happened in the transcript."
         f"Output your feedback with this format: '%%% [insert feedback here]'"
     )
-    return call_llm_api(prompt, streaming=True, log_prefix="Clinical Feedback")
+    return call_llm_api(prompt, streaming=True, log_prefix="Clinical Feedback", advanced=True)
 
 
 def get_llm_diagnosis_match(user_diagnosis, correct_diagnosis):

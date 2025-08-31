@@ -50,6 +50,7 @@ sup {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+  height: fit-content;
 }
 
 .close {
@@ -80,6 +81,7 @@ sup {
   color: white;
   border-top-left-radius: 12px;
   border-top-right-radius: 12px;
+  position: relative;
 }
 
 /* Modal Theme Variations */
@@ -630,7 +632,7 @@ sup {
   }
 
   .features {
-    flex-direction: row;
+    flex-direction: column;
     gap: 15px;
   }
 
@@ -859,6 +861,7 @@ ol {
   .modal-content {
     padding: 0; /* Adjust padding for modals */
     width: 90%; /* Increase width for modals on smaller screens */
+    height: fit-content;
   }
 }
 
@@ -924,6 +927,13 @@ ol {
   margin: 0;
   font-size: 1.1rem;
   color: black;
+}
+
+/* Streak badge */
+#streak-display {
+  margin-left: 10px;
+  font-weight: 700;
+  color: #ff9800;
 }
 
 .actions-section {
@@ -1013,5 +1023,27 @@ ol {
     height: 32px;
     font-size: 1rem;
     margin-left: 6px;
+  }
+}
+
+.chat-placeholder {
+  color: var(--imessage-light-text);
+  text-align: center;
+  padding: 20px 12px;
+  font-size: 0.95rem;
+  background: #fff;
+  border: 1px dashed #e0e0e0;
+  border-radius: 10px;
+  margin: 12px;
+  cursor: text;
+  user-select: none;
+}
+
+/* Ensure it looks good on very small screens */
+@media (max-width: 480px) {
+  .chat-placeholder {
+    margin: 10px;
+    padding: 16px 10px;
+    font-size: 0.9rem;
   }
 }

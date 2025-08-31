@@ -10,6 +10,30 @@ document.addEventListener('DOMContentLoaded', function () {
   const userInput = document.getElementById('user-input');
   const sendButton = document.getElementById('send-button');
 
+  // --- NEW: Chat placeholder when empty ---
+  const chatPlaceholder = document.createElement('div');
+  chatPlaceholder.id = 'chat-placeholder';
+  chatPlaceholder.className = 'chat-placeholder';
+  chatPlaceholder.innerHTML = '💬 Ask the patient a question via the chat and press Send to get started.';
+  chatPlaceholder.addEventListener('click', () => userInput?.focus?.());
+
+  function toggleChatPlaceholder() {
+    const hasMessages = !!chatBox.querySelector('.message');
+    if (!hasMessages) {
+      if (!chatPlaceholder.isConnected) chatBox.appendChild(chatPlaceholder);
+    } else {
+      if (chatPlaceholder.isConnected) chatPlaceholder.remove();
+    }
+  }
+
+  // Observe chat for messages being added/removed
+  const chatObserver = new MutationObserver(toggleChatPlaceholder);
+  chatObserver.observe(chatBox, { childList: true });
+
+  // Initial toggle on load
+  toggleChatPlaceholder();
+  // --- END NEW ---
+
   let vh = window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 
@@ -248,7 +272,9 @@ document.addEventListener('DOMContentLoaded', function () {
       lastPlayed: null, // This is for the heatmap/leaderboard daily streak
       gameHistory: [],
       consecutivePlayStreak: 0, // New: Tracks consecutive days played
-      lastDayOfConsecutivePlay: null // New: Stores the last date a game was won for streak tracking
+      lastDayOfConsecutivePlay: null, // New: Stores the last date a game was won for streak tracking
+      // Detailed wins: Honolulu date string, time taken, and diagnosis label
+      winHistory: []
     };
   }
 
@@ -258,7 +284,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const defaultStats = initializeUserStats();
     if (stats) {
       // Merge stored stats with default stats to ensure all keys are present
-      return { ...defaultStats, ...JSON.parse(stats) };
+      const parsed = JSON.parse(stats);
+      // Normalize legacy gameHistory entries (objects -> strings)
+      if (Array.isArray(parsed.gameHistory)) {
+        parsed.gameHistory = parsed.gameHistory
+          .map(entry => typeof entry === 'string' ? entry : (entry && entry.date ? entry.date : null))
+          .filter(Boolean);
+      } else {
+        parsed.gameHistory = [];
+      }
+      if (!Array.isArray(parsed.winHistory)) {
+        parsed.winHistory = [];
+      }
+      return { ...defaultStats, ...parsed };
     }
     return defaultStats;
   }
@@ -281,6 +319,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   }
 
+  // Reset streak to 0 if user skipped a whole Honolulu day since last win
+  function ensureStreakFreshness() {
+    const honoluluOptions = { timeZone: 'Pacific/Honolulu' };
+    const todayHonolulu = new Date(new Date().toLocaleString('en-US', honoluluOptions));
+    const todayString = todayHonolulu.toDateString();
+    const yesterdayHonolulu = new Date(todayHonolulu);
+    yesterdayHonolulu.setDate(todayHonolulu.getDate() - 1);
+    const yesterdayString = yesterdayHonolulu.toDateString();
+
+    const stats = getUserStats();
+    const last = stats.lastDayOfConsecutivePlay;
+    if (!last) return; // nothing to do yet
+    if (last !== todayString && last !== yesterdayString) {
+      if (stats.consecutivePlayStreak !== 0) {
+        stats.consecutivePlayStreak = 0;
+        saveUserStats(stats);
+      }
+    }
+  }
+
   // Function to update personal best time and daily streak
   function endGameSession(finalTime) {
     const userStats = getUserStats();
@@ -291,35 +349,31 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log('New personal best time:', finalTime);
     }
 
-    const honoluluOptions = { timeZone: "Pacific/Honolulu" };
+  const honoluluOptions = { timeZone: "Pacific/Honolulu" };
     
     // Increment games played
     userStats.gamesCompleted = (userStats.gamesCompleted || 0) + 1;
     
-    // --- Consecutive Play Streak Logic ---
-    const todayString = new Date(new Date().toLocaleString("en-US", honoluluOptions)).toDateString();
+    // --- Consecutive Play Streak Logic (Honolulu-based days) ---
+    const nowHonolulu = new Date(new Date().toLocaleString("en-US", honoluluOptions));
+    const todayString = nowHonolulu.toDateString();
     const lastStreakDayString = userStats.lastDayOfConsecutivePlay;
 
-    if (lastStreakDayString === null) { // First game ever completed (for streak tracking)
+    if (!lastStreakDayString) {
       userStats.consecutivePlayStreak = 1;
     } else if (lastStreakDayString === todayString) {
-      // Already completed a game today, streak doesn't increase further for additional games on the same day.
-      // No change to userStats.consecutivePlayStreak.
-    } else { // Last streak play was on a previous day
-      const lastStreakDate = new Date(lastStreakDayString);
-      const todayDate = new Date(todayString);
-
-      const yesterdayDate = new Date(todayDate);
-      yesterdayDate.setDate(todayDate.getDate() - 1);
-      const yesterdayString = yesterdayDate.toDateString();
-
-      if (lastStreakDayString === yesterdayString) { // Played consecutively
+      // already have a win today; do not increment
+    } else {
+      const yesterdayHonolulu = new Date(nowHonolulu);
+      yesterdayHonolulu.setDate(nowHonolulu.getDate() - 1);
+      const yesterdayString = yesterdayHonolulu.toDateString();
+      if (lastStreakDayString === yesterdayString) {
         userStats.consecutivePlayStreak = (userStats.consecutivePlayStreak || 0) + 1;
-      } else { // Missed one or more days
-        userStats.consecutivePlayStreak = 1; // Reset to 1 for today's play
+      } else {
+        userStats.consecutivePlayStreak = 1; // missed at least one day; start at 1 with today's win
       }
     }
-    userStats.lastDayOfConsecutivePlay = todayString; // Update the last day a game was won for streak
+    userStats.lastDayOfConsecutivePlay = todayString; // update last win day
 
     // --- Existing daily streak logic for leaderboard/heatmap ---
     // Check if the daily streak should be updated (this is the existing one)
@@ -329,13 +383,28 @@ document.addEventListener('DOMContentLoaded', function () {
         userStats.lastPlayed = today; // This updates the general last played day for heatmap.
     }
     
-    // Add current game to history (for heatmap)
-    if (!userStats.gameHistory) {
-        userStats.gameHistory = [];
+    // Add current win to history (for heatmap) as unique Honolulu day string
+    if (!Array.isArray(userStats.gameHistory)) {
+      userStats.gameHistory = [];
     }
-    userStats.gameHistory.push({ date: today, completed: true });
-    // Keep history to a reasonable size, e.g., last 365 days
-    userStats.gameHistory = userStats.gameHistory.slice(-365);
+    if (!userStats.gameHistory.includes(todayString)) {
+      userStats.gameHistory.push(todayString);
+      userStats.gameHistory = userStats.gameHistory.slice(-365);
+    }
+
+    // Record a detailed win entry
+    if (!Array.isArray(userStats.winHistory)) {
+      userStats.winHistory = [];
+    }
+    const diagnosis = (window.patientContext && window.patientContext.disease) ? window.patientContext.disease : null;
+    userStats.winHistory.push({
+      date: todayString,
+      timeSeconds: finalTime,
+      diagnosis: diagnosis,
+      completedAtHonolulu: new Date().toLocaleString('en-US', honoluluOptions),
+      completedAtUTC: new Date().toISOString()
+    });
+    userStats.winHistory = userStats.winHistory.slice(-365);
 
     saveUserStats(userStats);
     
@@ -362,8 +431,9 @@ document.addEventListener('DOMContentLoaded', function () {
     dailyStreakElement.textContent = `${userStats.dailyStreak} day${userStats.dailyStreak !== 1 ? 's' : ''}`;
 
     // Update games played text
-    const gamesPlayedElement = document.getElementById('games-played');
-    gamesPlayedElement.textContent = userStats.gamesPlayed !== undefined ? userStats.gamesPlayed : '0';
+  const gamesPlayedElement = document.getElementById('games-played');
+  const gamesCount = (userStats.gamesPlayed !== undefined) ? userStats.gamesPlayed : (userStats.gamesCompleted || 0);
+  gamesPlayedElement.textContent = gamesCount;
     
     // Render a GitHub-like heatmap using the gameHistory data
     renderHeatmap(userStats.gameHistory);
@@ -374,12 +444,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const heatmapContainer = document.getElementById('heatmap');
     if (!heatmapContainer) return;
     heatmapContainer.innerHTML = '';
-    const today = new Date();
-    // Create 30 cells representing the last 30 days.
-    for (let i = 29; i >= 0; i--) {
-        const day = new Date(today);
-        day.setDate(today.getDate() - i);
-        const dayString = day.toDateString();
+  const honoluluOptions = { timeZone: 'Pacific/Honolulu' };
+  const nowHonolulu = new Date(new Date().toLocaleString('en-US', honoluluOptions));
+  // Create 30 cells representing the last 30 Honolulu days.
+  for (let i = 29; i >= 0; i--) {
+    const dayHonolulu = new Date(nowHonolulu);
+    dayHonolulu.setDate(nowHonolulu.getDate() - i);
+    const dayString = dayHonolulu.toDateString();
         const cell = document.createElement('div');
         cell.className = 'heatmap-cell';
         // If the user played on that day, mark cell green; else gray.
@@ -591,12 +662,14 @@ document.addEventListener('DOMContentLoaded', function () {
   // Call this function when the app is loaded to check if user stats exist
   document.addEventListener('DOMContentLoaded', function () {
     // Load user stats when the app is loaded
+    // Ensure streak freshness (Honolulu-day-based) before rendering UI
+    ensureStreakFreshness();
     loadUserStats(); // Call the new function to load user stats
 
     // Call this function when the app is loaded to check if user stats exist
     const userStats = getUserStats(); // Ensure user stats are loaded when the app starts
 
-    // Display the stats in the UI
+  // Display the stats in the UI
     updateLeaderboardUI(userStats); // Update the UI with the loaded stats
     updateStreakDisplay(userStats.consecutivePlayStreak); // Display the streak on load
 
@@ -1109,6 +1182,197 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 });
 
+// Move these variables to global scope (before the DOMContentLoaded event)
+let interactiveFeedbackActive = false;
+let feedbackMoments = [];
+let currentFeedbackIndex = 0;
+
+// Move all interactive feedback functions to global scope
+function startInteractiveFeedback() {
+  if (!window.patientContext || !window.patientContext.completed) {
+    console.error('Cannot start interactive feedback: game not completed');
+    return;
+  }
+
+  // Fetch interactive feedback data
+  fetch('/get_interactive_feedback', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      patient_context: window.patientContext
+    }),
+  })
+  .then(response => response.json())
+  .then(data => {
+    if (data.success) {
+      feedbackMoments = data.feedback_data.feedback_moments || [];
+      currentFeedbackIndex = 0;
+      interactiveFeedbackActive = true;
+      
+      if (feedbackMoments.length > 0) {
+        // Hide the interactive feedback button
+        const feedbackButton = document.getElementById('interactive-feedback-button');
+        if (feedbackButton) {
+          feedbackButton.style.display = 'none';
+        }
+        
+        // Show the first feedback moment
+        showFeedbackMoment(0);
+      } else {
+        alert('No feedback moments available for this session.');
+      }
+    } else {
+      console.error('Failed to get interactive feedback:', data.error);
+      alert('Failed to load interactive feedback. Please try again.');
+    }
+  })
+  .catch(error => {
+    console.error('Error fetching interactive feedback:', error);
+    alert('Error loading interactive feedback. Please try again.');
+  });
+}
+
+function showFeedbackMoment(index) {
+  if (index >= feedbackMoments.length || index < 0) {
+    endInteractiveFeedback();
+    return;
+  }
+
+  const moment = feedbackMoments[index];
+  currentFeedbackIndex = index;
+  
+  // Find the target message in the chat
+  const chatMessages = document.querySelectorAll('.message');
+  let targetMessage = null;
+  
+  // Find the message that matches the feedback moment
+  chatMessages.forEach((msg, msgIndex) => {
+    if (msg.textContent.includes(moment.message_text) || 
+        (moment.message_index && msgIndex === moment.message_index)) {
+      targetMessage = msg;
+    }
+  });
+  
+  if (targetMessage) {
+    // Clear any existing highlights
+    clearFeedbackHighlights();
+    
+    // Add highlight to the target message
+    targetMessage.classList.add('feedback-highlight');
+    
+    // Scroll to the message
+    targetMessage.scrollIntoView({ 
+      behavior: 'smooth', 
+      block: 'center' 
+    });
+    
+    // Create and show the feedback panel
+    showFeedbackPanel(moment, index);
+  } else {
+    console.warn('Could not find target message for feedback moment:', moment);
+    // Skip to next moment if message not found
+    showFeedbackMoment(index + 1);
+  }
+}
+
+function showFeedbackPanel(moment, index) {
+  // Remove any existing feedback panel
+  const existingPanel = document.getElementById('feedback-panel');
+  if (existingPanel) {
+    existingPanel.remove();
+  }
+  
+  // Create feedback panel
+  const feedbackPanel = document.createElement('div');
+  feedbackPanel.id = 'feedback-panel';
+  feedbackPanel.className = 'feedback-panel';
+  
+  // Determine the icon and color based on feedback type
+  let icon = '💡';
+  let panelClass = 'feedback-panel';
+  
+  if (moment.feedback_type === 'skillful') {
+    icon = '🎯';
+    panelClass += ' feedback-skillful';
+  } else if (moment.feedback_type === 'improvement') {
+    icon = '📈';
+    panelClass += ' feedback-improvement';
+  } else if (moment.feedback_type === 'crucial') {
+    icon = '🔑';
+    panelClass += ' feedback-crucial';
+  }
+  
+  feedbackPanel.className = panelClass;
+  
+  feedbackPanel.innerHTML = `
+    <div class="feedback-header">
+      <span class="feedback-icon">${icon}</span>
+      <h3 class="feedback-title">${moment.title}</h3>
+      <div class="feedback-counter">${index + 1} of ${feedbackMoments.length}</div>
+    </div>
+    <div class="feedback-content">
+      <p class="feedback-message">${moment.coaching_message}</p>
+    </div>
+    <div class="feedback-controls">
+      ${index > 0 ? '<button class="feedback-btn feedback-btn-secondary" onclick="showFeedbackMoment(' + (index - 1) + ')">Previous</button>' : ''}
+      <button class="feedback-btn feedback-btn-primary" onclick="showFeedbackMoment(' + (index + 1) + ')">
+        ${index < feedbackMoments.length - 1 ? 'Next' : 'Finish'}
+      </button>
+    </div>
+  `;
+  
+  // Add panel to the page
+  document.body.appendChild(feedbackPanel);
+  
+  // Position the panel
+  setTimeout(() => {
+    feedbackPanel.style.opacity = '1';
+    feedbackPanel.style.transform = 'translateY(0)';
+  }, 100);
+}
+
+function clearFeedbackHighlights() {
+  const highlightedMessages = document.querySelectorAll('.feedback-highlight');
+  highlightedMessages.forEach(msg => {
+    msg.classList.remove('feedback-highlight');
+  });
+}
+
+function endInteractiveFeedback() {
+  interactiveFeedbackActive = false;
+  currentFeedbackIndex = 0;
+  feedbackMoments = [];
+  
+  // Clear highlights
+  clearFeedbackHighlights();
+  
+  // Remove feedback panel
+  const feedbackPanel = document.getElementById('feedback-panel');
+  if (feedbackPanel) {
+    feedbackPanel.remove();
+  }
+  
+  // Show completion message
+  const completionMessage = document.createElement('div');
+  completionMessage.className = 'message llm-message';
+  completionMessage.innerHTML = `
+    <div style="text-align: center; padding: 20px;">
+      <h3>🎉 Feedback Session Complete!</h3>
+      <p>Great job working through the feedback. Continue practicing to improve your clinical reasoning skills!</p>
+    </div>
+  `;
+  
+  const chatBox = document.getElementById('chat-box');
+  chatBox.appendChild(completionMessage);
+  
+  // Scroll to bottom
+  chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+
+
 // Remove all existing window.onclick assignments and add the following unified handler:
 window.addEventListener('click', function (event) {
     // If the clicked element has a class of "modal", then it is the overlay.
@@ -1180,8 +1444,10 @@ function endGameSession(finalTime) {
     // Increment games played
     userStats.gamesCompleted = (userStats.gamesCompleted || 0) + 1;
     
-    // --- Consecutive Play Streak Logic ---
-    const todayString = new Date().toDateString();
+    // --- Consecutive Play Streak Logic (Honolulu-based) ---
+    const honoluluOptions = { timeZone: 'Pacific/Honolulu' };
+    const nowHonolulu = new Date(new Date().toLocaleString('en-US', honoluluOptions));
+    const todayString = nowHonolulu.toDateString();
     const lastStreakDayString = userStats.lastDayOfConsecutivePlay;
     console.log(`[endGameSession] StreakLogic: todayString='${todayString}', lastStreakDayString='${lastStreakDayString}', current loaded consecutivePlayStreak=${userStats.consecutivePlayStreak}`);
 
@@ -1190,20 +1456,11 @@ function endGameSession(finalTime) {
       console.log("[endGameSession] StreakLogic: First game, streak set to 1");
     } else if (lastStreakDayString === todayString) {
       console.log("[endGameSession] StreakLogic: Already played today, streak remains " + userStats.consecutivePlayStreak);
-      // If userStats.consecutivePlayStreak was 0 here, it stays 0. This is the likely path if the problem occurs.
-      // Let's add a specific check: if it's 0 but it's the first win of the day, should it become 1?
-      // The current logic implies if lastDayOfConsecutivePlay is today, the streak for today is already established (or not, if it's 0).
-      // For a robust fix if this is the issue, one might consider if consecutivePlayStreak is 0 here, it should become 1.
-      // However, let's first confirm this path is taken with streak being 0.
-      if (userStats.consecutivePlayStreak === 0 || userStats.consecutivePlayStreak === null || userStats.consecutivePlayStreak === undefined) {
-        console.warn("[endGameSession] StreakLogic: WARNING - lastStreakDayString is today, but consecutivePlayStreak is 0/null/undefined. Streak will NOT start/increment.");
-      }
+      // do not increment on multiple wins in the same Honolulu day
     } else { 
-      const lastStreakDate = new Date(lastStreakDayString);
-      const todayDate = new Date(todayString);
-      const yesterdayDate = new Date(todayDate);
-      yesterdayDate.setDate(todayDate.getDate() - 1);
-      const yesterdayString = yesterdayDate.toDateString();
+      const yesterdayHonolulu = new Date(nowHonolulu);
+      yesterdayHonolulu.setDate(nowHonolulu.getDate() - 1);
+      const yesterdayString = yesterdayHonolulu.toDateString();
 
       if (lastStreakDayString === yesterdayString) { 
         userStats.consecutivePlayStreak = (userStats.consecutivePlayStreak || 0) + 1;
@@ -1217,17 +1474,32 @@ function endGameSession(finalTime) {
     console.log('[endGameSession] StreakLogic: userStats.consecutivePlayStreak is now ' + userStats.consecutivePlayStreak + ', lastDayOfConsecutivePlay is now ' + userStats.lastDayOfConsecutivePlay);
 
     // --- Existing daily streak logic for leaderboard/heatmap ---
-    // const today = new Date().toDateString(); // todayString can be reused
     if (userStats.lastPlayed !== todayString) { 
         userStats.dailyStreak = (userStats.dailyStreak || 0) + 1; 
         userStats.lastPlayed = todayString; 
     }
     
-    if (!userStats.gameHistory) {
-        userStats.gameHistory = [];
+    if (!Array.isArray(userStats.gameHistory)) {
+      userStats.gameHistory = [];
     }
-    userStats.gameHistory.push({ date: todayString, completed: true });
-    userStats.gameHistory = userStats.gameHistory.slice(-365);
+    if (!userStats.gameHistory.includes(todayString)) {
+      userStats.gameHistory.push(todayString);
+      userStats.gameHistory = userStats.gameHistory.slice(-365);
+    }
+
+    // Append winHistory entry
+    if (!Array.isArray(userStats.winHistory)) {
+      userStats.winHistory = [];
+    }
+    const diagnosis = (window.patientContext && window.patientContext.disease) ? window.patientContext.disease : null;
+    userStats.winHistory.push({
+      date: todayString,
+      timeSeconds: finalTime,
+      diagnosis: diagnosis,
+      completedAtHonolulu: new Date().toLocaleString('en-US', honoluluOptions),
+      completedAtUTC: new Date().toISOString()
+    });
+    userStats.winHistory = userStats.winHistory.slice(-365);
 
     console.log('[endGameSession] UserStats before saving:', JSON.parse(JSON.stringify(userStats)));
     saveUserStats(userStats); 
