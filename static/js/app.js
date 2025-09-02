@@ -10,30 +10,6 @@ document.addEventListener('DOMContentLoaded', function () {
   const userInput = document.getElementById('user-input');
   const sendButton = document.getElementById('send-button');
 
-  // --- NEW: Chat placeholder when empty ---
-  const chatPlaceholder = document.createElement('div');
-  chatPlaceholder.id = 'chat-placeholder';
-  chatPlaceholder.className = 'chat-placeholder';
-  chatPlaceholder.innerHTML = '💬 Ask the patient a question via the chat and press Send to get started.';
-  chatPlaceholder.addEventListener('click', () => userInput?.focus?.());
-
-  function toggleChatPlaceholder() {
-    const hasMessages = !!chatBox.querySelector('.message');
-    if (!hasMessages) {
-      if (!chatPlaceholder.isConnected) chatBox.appendChild(chatPlaceholder);
-    } else {
-      if (chatPlaceholder.isConnected) chatPlaceholder.remove();
-    }
-  }
-
-  // Observe chat for messages being added/removed
-  const chatObserver = new MutationObserver(toggleChatPlaceholder);
-  chatObserver.observe(chatBox, { childList: true });
-
-  // Initial toggle on load
-  toggleChatPlaceholder();
-  // --- END NEW ---
-
   let vh = window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 
@@ -51,7 +27,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Check if there's existing chat history
   const existingChatHistory = JSON.parse(localStorage.getItem('chatHistory')) || [];
   const existingPatientContext = JSON.parse(localStorage.getItem('patientContext'));
-  console.log(existingChatHistory);
+  // console.log(existingChatHistory);
 
   const honoluluOptions = { timeZone: "Pacific/Honolulu" };
   const honoluluNow = new Date(new Date().toLocaleString("en-US", honoluluOptions));
@@ -91,7 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
         welcomeModal.style.display = 'none';
     }
   } else {
-    console.log("Standard case mode detected");
+    // console.log("Standard case mode detected");
     // Load chat history and continue game if history exists
     if (filteredChatHistory.length > 0 && !customCaseMode) {    
       // Update localStorage with filtered history
@@ -100,9 +76,9 @@ document.addEventListener('DOMContentLoaded', function () {
         console.log(`Chat history cleaned.`);
         existingChatHistory = filteredChatHistory;
       } else {
-        console.log("All chat messages are from today (Honolulu time).");
+        // console.log("All chat messages are from today (Honolulu time).");
       }
-      console.log('Existing chat history found, continuing game.');
+      // console.log('Existing chat history found, continuing game.');
       welcomeModal.style.display = 'none'; // Hide welcome modal
       
       // Enable user input
@@ -125,12 +101,12 @@ document.addEventListener('DOMContentLoaded', function () {
       // Restore patient context if available
       if (existingPatientContext) {
         window.patientContext = existingPatientContext;
-        console.log('Patient context restored:', window.patientContext);
+        // console.log('Patient context restored:', window.patientContext);
       }
 
       // Restore timer if it was running
       const savedElapsedTime = localStorage.getItem('elapsedTime');
-      console.log('savedElapsedTime:', savedElapsedTime);
+      // console.log('savedElapsedTime:', savedElapsedTime);
       if (savedElapsedTime) {
         elapsedTime = parseInt(savedElapsedTime, 10);
         if (existingPatientContext && !existingPatientContext.completed) {
@@ -157,7 +133,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Close modal when close button is clicked
   closeWelcomeModal.onclick = function () {
     welcomeModal.style.display = 'none';
-    console.log('Welcome modal closed by clicking the close button.');
+    // console.log('Welcome modal closed by clicking the close button.');
   };
 
   function fixInputToBottom() {
@@ -165,7 +141,7 @@ document.addEventListener('DOMContentLoaded', function () {
       const inputArea = document.getElementById('input-area');
       const chatBox = document.getElementById('chat-box');
       if (chatBox.scrollHeight > chatBox.clientHeight) {
-        console.log('Chat box is scrollable, fixing input area to bottom.');
+        // console.log('Chat box is scrollable, fixing input area to bottom.');
         inputArea.style.position = 'fixed';
         inputArea.style.bottom = '5px';
         inputArea.style.left = '5px';
@@ -204,14 +180,14 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         }
     }, 1000);
-    console.log('Timer started at', elapsedTime, 'seconds.');
+    // console.log('Timer started at', elapsedTime, 'seconds.');
 }
 
   // Function to stop the timer
   function stopTimer() {
     clearInterval(timerInterval);
     timerStarted = false;
-    console.log('Timer stopped at', elapsedTime, 'seconds.');
+    // console.log('Timer stopped at', elapsedTime, 'seconds.');
   }
 
   // Update the function that handles the correct answer to the high-yield question
@@ -222,19 +198,19 @@ document.addEventListener('DOMContentLoaded', function () {
     // Launch confetti animation
     if (typeof window.launchConfetti === 'function') {
       window.launchConfetti();
-      console.log('Confetti animation launched.');
+      // console.log('Confetti animation launched.');
     } else {
-      console.error('Confetti animation function not available.');
+      // console.error('Confetti animation function not available.');
     }
 
     // Play the jingle
-    jingleAudio.play()
-      .then(() => {
-        console.log('Jingle played successfully.');
-      })
-      .catch(error => {
-        console.error('Error playing jingle:', error);
-      });
+    // jingleAudio.play()
+    //   .then(() => {
+    //     console.log('Jingle played successfully.');
+    //   })
+    //   .catch(error => {
+    //     console.error('Error playing jingle:', error);
+    //   });
 
     // Stop the timer when the game ends with the correct diagnosis
     stopTimer();
@@ -246,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (window.patientContext) {
       window.patientContext.completed = true;
       localStorage.setItem('patientContext', JSON.stringify(window.patientContext));
-      console.log('Game marked as completed in client-side patientContext:', window.patientContext);
+      // console.log('Game marked as completed in client-side patientContext:', window.patientContext);
     }
 
     // Ensure user input is enabled for follow-up questions
@@ -304,7 +280,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Function to save user stats in local storage
   function saveUserStats(userStats) {
     localStorage.setItem('userStats', JSON.stringify(userStats));
-    console.log('User stats saved to local storage:', userStats);
+    // console.log('User stats saved to local storage:', userStats);
   }
 
   // New function to update the streak display in the header
@@ -346,7 +322,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Check if the new time is a personal best
     if (userStats.personalBestTime === null || finalTime < userStats.personalBestTime) {
         userStats.personalBestTime = finalTime;
-        console.log('New personal best time:', finalTime);
+        // console.log('New personal best time:', finalTime);
     }
 
   const honoluluOptions = { timeZone: "Pacific/Honolulu" };
@@ -354,7 +330,7 @@ document.addEventListener('DOMContentLoaded', function () {
     // Increment games played
     userStats.gamesCompleted = (userStats.gamesCompleted || 0) + 1;
     
-    // --- Consecutive Play Streak Logic (Honolulu-based days) ---
+    // --- Consecutive Play Streak Logic (Honolulu-based) ---
     const nowHonolulu = new Date(new Date().toLocaleString("en-US", honoluluOptions));
     const todayString = nowHonolulu.toDateString();
     const lastStreakDayString = userStats.lastDayOfConsecutivePlay;
@@ -482,7 +458,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
     function preloadGameCase() {
-    console.log('Preloading game case on page load.');
+    // console.log('Preloading game case on page load.');
     gameLoading = true;
 
     // Show the case loading indicator instead of the message typing indicator
@@ -492,7 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     try {
-      console.log('Making POST request to /start_game to preload case');
+      // console.log('Making POST request to /start_game to preload case');
       fetch(customCaseMode ? '/start_custom_game' : '/start_game', {
         method: 'POST',
         headers: {
@@ -509,8 +485,8 @@ document.addEventListener('DOMContentLoaded', function () {
         return response.json();
       })
       .then(data => {
-        console.log('Successfully preloaded game case data');
-        console.log(data);
+        // console.log('Successfully preloaded game case data');
+        // console.log(data);
 
         // Re-enable user input
         userInput.disabled = false;
@@ -527,7 +503,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       })
       .catch(error => {
-        console.error("Error during case preloading:", error);
+        // console.error("Error during case preloading:", error);
         caseLoadingError = true;
         gameLoading = false;
         
@@ -555,13 +531,38 @@ document.addEventListener('DOMContentLoaded', function () {
     localStorage.setItem('chatHistory', JSON.stringify([])); // Clear localStorage chat history
     localStorage.removeItem('patientContext'); // Clear patient context
     localStorage.removeItem('elapsedTime'); // Clear timer state
-    console.log('Chat history, patient context and UI cleared.');
+    // console.log('Chat history, patient context and UI cleared.');
   }
+
+  // NEW: role select
+const playerRoleSelect = document.getElementById('player-role-select');
+
+// Initialize Player Role selection and Start Game gating
+  (function initPlayerRoleGate() {
+    if (!playerRoleSelect) return;
+
+    const savedRole = localStorage.getItem('playerRole') || '';
+    if (savedRole) {
+      playerRoleSelect.value = savedRole;
+      // Enable Start Game if a role is saved
+    }
+  })();
+
 
   // Start game button click handler - now just displays the preloaded case
   startGameButton.onclick = function () {
+    if (playerRoleSelect) {
+      const selected = playerRoleSelect.value;
+      if (!selected) {
+        playerRoleSelect.focus();
+        return;
+      }
+      // Save selection so it persists
+      localStorage.setItem('playerRole', selected);
+    }
+
     welcomeModal.style.display = 'none';
-    console.log('Start game button clicked.');
+    // console.log('Start game button clicked.');
 
     // Clear chat history and UI
     clearChatHistoryAndUI();
@@ -611,13 +612,13 @@ document.addEventListener('DOMContentLoaded', function () {
     // Clear the chat box
     const chatBox = document.getElementById('chat-box');
     chatBox.innerHTML = '';
-    console.log('Chat box cleared for new game.');
+    // console.log('Chat box cleared for new game.');
     
     // Clear chat history in local storage
     if (!customCaseMode) {
       localStorage.setItem('chatHistory', JSON.stringify([]));
     }
-    console.log('Chat history in local storage cleared.');
+    // console.log('Chat history in local storage cleared.');
 
     // Store patient context for future messages
     window.patientContext = {
@@ -644,7 +645,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const userStats = getUserStats();
     updateLeaderboardUI(userStats);
     
-    console.log('Game initialization complete, user input enabled.');
+    // console.log('Game initialization complete, user input enabled.');
   }
 
   // Instead, get references to the existing modal and close button:
@@ -675,13 +676,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (window.custom_patient_context) { // the server sets this variable if using /case/<token>
       customCaseMode = true;
-      console.log("Custom case mode detected");
+      // console.log("Custom case mode detected");
       // Set the patient context from the custom case
       window.patientContext = window.custom_patient_context;
       // Remove any existing history to avoid conflict with the daily case.
       localStorage.removeItem('chatHistory');
       localStorage.removeItem('patientContext');
-      console.log("Custom case mode activated", window.patientContext);
+      // console.log("Custom case mode activated", window.patientContext);
 
       // Optionally, display an indicator that this is a custom case.
       // const customIndicator = document.getElementById('custom-case-indicator');
@@ -696,18 +697,18 @@ document.addEventListener('DOMContentLoaded', function () {
           welcomeModal.style.display = 'none';
       }
     } else {
-      console.log("Standard case mode detected");
+      // console.log("Standard case mode detected");
       // Load chat history and continue game if history exists
       if (filteredChatHistory.length > 0 && !customCaseMode) {    
         // Update localStorage with filtered history
         if (filteredChatHistory.length < existingChatHistory.length) {
           localStorage.setItem('chatHistory', JSON.stringify(filteredChatHistory));
-          console.log(`Chat history cleaned.`);
+          // console.log(`Chat history cleaned.`);
           existingChatHistory = filteredChatHistory;
         } else {
-          console.log("All chat messages are from today (Honolulu time).");
+          // console.log("All chat messages are from today (Honolulu time).");
         }
-        console.log('Existing chat history found, continuing game.');
+        // console.log('Existing chat history found, continuing game.');
         welcomeModal.style.display = 'none'; // Hide welcome modal
         
         // Enable user input
@@ -730,12 +731,12 @@ document.addEventListener('DOMContentLoaded', function () {
         // Restore patient context if available
         if (existingPatientContext) {
           window.patientContext = existingPatientContext;
-          console.log('Patient context restored:', window.patientContext);
+          // console.log('Patient context restored:', window.patientContext);
         }
 
         // Restore timer if it was running
         const savedElapsedTime = localStorage.getItem('elapsedTime');
-        console.log('savedElapsedTime:', savedElapsedTime);
+        // console.log('savedElapsedTime:', savedElapsedTime);
         if (savedElapsedTime) {
           elapsedTime = parseInt(savedElapsedTime, 10);
           if (existingPatientContext && !existingPatientContext.completed) {
@@ -762,26 +763,26 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Close instructions modal when close button is clicked
   closeInstructionsButton.addEventListener('click', function(e) {
-    console.log('Close instructions button clicked');
+    // console.log('Close instructions button clicked');
     instructionsModal.style.display = 'none';
     if (instructionsModalSource === 'start') {
       welcomeModal.style.display = 'block';
-      console.log('Instructions modal closed, main modal displayed');
+      // console.log('Instructions modal closed, main modal displayed');
     } else {
-      console.log('Instructions modal closed, no main modal displayed');
+      // console.log('Instructions modal closed, no main modal displayed');
     }
   });
 
   // View instructions button click handler
   viewInstructionsButton.onclick = function () {
-    console.log('Current modal display:', welcomeModal.style.display);
-    console.log('Instructions modal display before showing:', instructionsModal.style.display);
-    console.log('Instructions modal element exists:', instructionsModal !== null);
+    // console.log('Current modal display:', welcomeModal.style.display);
+    // console.log('Instructions modal display before showing:', instructionsModal.style.display);
+    // console.log('Instructions modal element exists:', instructionsModal !== null);
     welcomeModal.style.display = 'none';
     instructionsModal.style.display = 'block';
     instructionsModalSource = 'start';  // mark as coming from start game
     closeInstructionsButton.textContent = '←'; // back arrow for start-game modal
-    console.log('Instructions modal displayed from start game modal.');
+    // console.log('Instructions modal displayed from start game modal.');
   };
 
   // Disable the send button
@@ -816,6 +817,44 @@ document.addEventListener('DOMContentLoaded', function () {
       });
   }
 
+  // Helper to flatten chat history into a compact string
+  function buildConversationString() {
+    const history = JSON.parse(localStorage.getItem('chatHistory')) || [];
+    return history.map(h => {
+      const who = h.type === 'user' ? 'User' : 'AI';
+      return `${who}: ${h.text || h.message || ''}`.trim();
+    }).join('\n');
+  }
+
+  // Send a best-effort snapshot to the server (fire-and-forget)
+  async function saveConversationSnapshot() {
+    try {
+      const userStats = getUserStats();
+      const trainingLevel = (playerRoleSelect && playerRoleSelect.value) ? playerRoleSelect.value : 'unknown';
+      const honoluluOptions = { timeZone: 'Pacific/Honolulu' };
+      const todayHonolulu = new Date(new Date().toLocaleString('en-US', honoluluOptions)).toDateString();
+
+      await fetch('/save_conversation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          training_level: trainingLevel,
+          date: todayHonolulu, // or omit to let server use UTC
+          disease: (window.patientContext && window.patientContext.disease) ? window.patientContext.disease : null,
+          daily_streak: userStats.consecutivePlayStreak || 0,
+          games_played: Array.isArray(userStats.gameHistory) ? userStats.gameHistory.length : 0,
+          games_completed: userStats.gamesCompleted || 0,
+          last_played: userStats.lastPlayed || todayHonolulu,
+          elapsed_time: typeof elapsedTime === 'number' ? elapsedTime : 0,
+          conversation: buildConversationString()
+        })
+      });
+    } catch (e) {
+      console.warn('Failed to save conversation snapshot', e);
+      // Intentionally non-blocking
+    }
+  }
+
   // Function to send user input to the LLM
   function sendMessage() {
       // Don't allow sending if already loading or game is initializing
@@ -845,13 +884,14 @@ document.addEventListener('DOMContentLoaded', function () {
           if (!customCaseMode) {
             localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
           }
+          // saveConversationSnapshot(); // Fire-and-forget snapshot save
 
           userInput.value = ''; // Clear input
 
           // Show animated typing indicator for message loading (mid-game)
           const loadingIndicator = document.getElementById('loading-indicator');
           loadingIndicator.style.display = 'inline-flex'; // Show typing indicator
-          console.log('Message loading indicator displayed.');
+          // console.log('Message loading indicator displayed.');
 
           // Call the LLM with context
           fetch('/ask_llm', {
@@ -865,15 +905,15 @@ document.addEventListener('DOMContentLoaded', function () {
               }),
           })
           .then(response => {
-              console.log(window.patientContext);
+              // console.log(window.patientContext);
               if (!response.ok) {
-                  console.log(response);
+                  // console.log(response);
                   throw new Error('Network response was not ok');
               }
               return response;
           })
           .then((data) => {
-              console.log(data);
+              // console.log(data);
 
               const reader = data.body.getReader();
               const decoder = new TextDecoder();
@@ -905,11 +945,12 @@ document.addEventListener('DOMContentLoaded', function () {
                     if (!customCaseMode) {
                       localStorage.setItem('chatHistory', JSON.stringify(chatHistory));
                     }
+                    saveConversationSnapshot(); // Fire-and-forget snapshot save
                     return;
                   }
                   let newText = decoder.decode(value, { stream: true });
                   if (newText.includes('%%%') && !window.patientContext.completed) {
-                    console.log('Correct answer found');
+                    // console.log('Correct answer found');
                     patientMessage.style.maxWidth = '100%';
                     handleCorrect();
                     window.patientContext.completed = true;
@@ -939,13 +980,13 @@ document.addEventListener('DOMContentLoaded', function () {
                   });
                   patientMessage.innerHTML = patientMessage.innerHTML.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
                   if (patientMessage.innerHTML.includes('$$$')) {
-                    console.log('Ordered test');
+                    // console.log('Ordered test');
                     patientMessage.style.maxWidth = '100%';
                     patientMessage.innerHTML = patientMessage.innerHTML.replace('$$$', '');
                   }
                   read();
                 }).catch(err => {
-                  console.error("Error reading stream:", err);
+                  // console.error("Error reading stream:", err);
                 });
               }
               read();
@@ -953,7 +994,7 @@ document.addEventListener('DOMContentLoaded', function () {
               // Hide typing indicator
               const loadingIndicator = document.getElementById('loading-indicator');
               loadingIndicator.style.display = 'none'; // Hide typing indicator
-              console.log('Loading indicator hidden.');
+              // console.log('Loading indicator hidden.');
               
               // Reset loading state
               isLoading = false;
@@ -991,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', function () {
           .catch(error => {
               console.error("Error during fetch:", error);
               loadingIndicator.style.display = 'none'; // Hide typing indicator on error
-              console.log('Loading indicator hidden due to error.');
+              // console.log('Loading indicator hidden due to error.');
               
               // Reset loading state on error
               isLoading = false;
@@ -1037,8 +1078,8 @@ document.addEventListener('DOMContentLoaded', function () {
       const diseaseName = document.getElementById('disease-name').value;
       const caseDescription = document.getElementById('case-description').value;
 
-      console.log('Submit Case button clicked.'); // Log button click
-      console.log('Case Description:', caseDescription); // Log the case description
+      // console.log('Submit Case button clicked.'); // Log button click
+      // console.log('Case Description:', caseDescription); // Log the case description
 
       if (diseaseName.trim() === "") {
           alert("Please enter a disease name.");
@@ -1050,7 +1091,7 @@ document.addEventListener('DOMContentLoaded', function () {
       submitButton.innerHTML = '<span class="loading-spinner"></span> Creating...';
       submitButton.disabled = true;
 
-      console.log('Submitting case description:', diseaseName, caseDescription); // Log case description before submission
+      // console.log('Submitting case description:', diseaseName, caseDescription); // Log case description before submission
 
       // Call the endpoint to submit the case
       fetch('/submit_case', {
@@ -1061,11 +1102,11 @@ document.addEventListener('DOMContentLoaded', function () {
           body: JSON.stringify({ disease: diseaseName, description: caseDescription })
       })
       .then(response => {
-          console.log('Received response from /submit_case:', response); // Log the response object
+          // console.log('Received response from /submit_case:', response); // Log the response object
           return response.json();
       })
       .then(data => {
-          console.log('Response data:', data); // Log the parsed response data
+          // console.log('Response data:', data); // Log the parsed response data
           
           // Reset button state
           submitButton.innerHTML = 'Create Case';
@@ -1126,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', function () {
               feedback.classList.add('visible');
               
               // Log the action
-              console.log('URL copied to clipboard:', url);
+              // console.log('URL copied to clipboard:', url);
               
               // Hide the feedback after 2 seconds
               setTimeout(() => {
@@ -1149,33 +1190,33 @@ document.addEventListener('DOMContentLoaded', function () {
   updateStreakDisplay(userStats.consecutivePlayStreak); // Display the streak on load
 
   viewInstructionsButton.onclick = function () {
-    console.log('Current modal display:', welcomeModal.style.display);
-    console.log('Instructions modal display before showing:', instructionsModal.style.display);
-    console.log('Instructions modal element exists:', instructionsModal !== null);
+    // console.log('Current modal display:', welcomeModal.style.display);
+    // console.log('Instructions modal display before showing:', instructionsModal.style.display);
+    // console.log('Instructions modal element exists:', instructionsModal !== null);
     welcomeModal.style.display = 'none';
     instructionsModal.style.display = 'block';
     instructionsModalSource = 'start';  // mark as coming from start game
     closeInstructionsButton.textContent = '←'; // back arrow for start-game modal
-    console.log('Instructions modal displayed from start game modal.');
+    // console.log('Instructions modal displayed from start game modal.');
   };
 
-  document.getElementById('view-instructions-game').addEventListener('click', function() {
-    console.log('View Instructions button clicked from the game.');
-    instructionsModal.style.display = 'block';
-    welcomeModal.style.display = 'none'; // Hide the start game modal
-    instructionsModalSource = 'game';
-    closeInstructionsButton.textContent = '×';
-  });
+  // document.getElementById('view-instructions-game').addEventListener('click', function() {
+  //   // console.log('View Instructions button clicked from the game.');
+  //   instructionsModal.style.display = 'block';
+  //   welcomeModal.style.display = 'none'; // Hide the start game modal
+  //   instructionsModalSource = 'game';
+  //   closeInstructionsButton.textContent = '×';
+  // });
 
   closeInstructionsButton.addEventListener('click', function(e) {
-    console.log('Close instructions button clicked');
+    // console.log('Close instructions button clicked');
     instructionsModal.style.display = 'none';
     if (instructionsModalSource === 'start') {
         welcomeModal.style.display = 'block';
-        console.log('Instructions modal closed, returning to welcome modal.');
+        // console.log('Instructions modal closed, returning to welcome modal.');
     } else {
         welcomeModal.style.display = 'none';
-        console.log('Instructions modal closed, returning to game.');
+        // console.log('Instructions modal closed, returning to game.');
         // Do not show the main modal
     }
     instructionsModalSource = null;
@@ -1378,7 +1419,7 @@ window.addEventListener('click', function (event) {
     // If the clicked element has a class of "modal", then it is the overlay.
     if (event.target.classList.contains('modal') && event.target.id !== 'welcome-modal') {
         event.target.style.display = 'none';
-        console.log('Modal closed by clicking outside its content.');
+        // console.log('Modal closed by clicking outside its content.');
     }
 });
 
@@ -1387,25 +1428,25 @@ if (document.readyState !== 'loading') {
   try {
     // Instructions button
     document.getElementById('view-instructions-icon').addEventListener('click', function() {
-      console.log('Instructions icon clicked');
+      // console.log('Instructions icon clicked');
       const instructionsModal = document.getElementById('instructions-modal');
       instructionsModal.style.display = 'block';
       instructionsModalSource = 'header';  // mark as coming from header
       document.getElementById('close-instructions-modal').textContent = '×'; // regular close button
-      console.log('Instructions modal displayed from header.');
+      // console.log('Instructions modal displayed from header.');
       document.getElementById('welcome-modal').style.display = 'none';
 
     });
     
     // Create case button
     document.getElementById('create-case-icon').addEventListener('click', function() {
-      console.log('Create case icon clicked');
+      // console.log('Create case icon clicked');
       document.getElementById('create-case-modal').style.display = 'block';
     });
     
     // View leaderboard button
     document.getElementById('view-leaderboard-icon').addEventListener('click', function() {
-      console.log('Leaderboard icon clicked');
+      // console.log('Leaderboard icon clicked');
       document.getElementById('leaderboard-modal').style.display = 'block';
     });
     
@@ -1427,18 +1468,18 @@ if (document.readyState !== 'loading') {
 // Function to save user stats in local storage
 function saveUserStats(userStats) {
     localStorage.setItem('userStats', JSON.stringify(userStats));
-    console.log('User stats saved to local storage:', userStats);
+    // console.log('User stats saved to local storage:', userStats);
 }
 
 // Function to update personal best time and daily streak
 function endGameSession(finalTime) {
     const userStats = getUserStats();
-    console.log('[endGameSession] Initial userStats loaded:', JSON.parse(JSON.stringify(userStats))); // Log loaded stats
+    // console.log('[endGameSession] Initial userStats loaded:', JSON.parse(JSON.stringify(userStats))); // Log loaded stats
 
     // Check if the new time is a personal best
     if (userStats.personalBestTime === null || finalTime < userStats.personalBestTime) {
         userStats.personalBestTime = finalTime;
-        console.log('[endGameSession] New personal best time:', finalTime);
+        // console.log('[endGameSession] New personal best time:', finalTime);
     }
     
     // Increment games played
@@ -1449,13 +1490,13 @@ function endGameSession(finalTime) {
     const nowHonolulu = new Date(new Date().toLocaleString('en-US', honoluluOptions));
     const todayString = nowHonolulu.toDateString();
     const lastStreakDayString = userStats.lastDayOfConsecutivePlay;
-    console.log(`[endGameSession] StreakLogic: todayString='${todayString}', lastStreakDayString='${lastStreakDayString}', current loaded consecutivePlayStreak=${userStats.consecutivePlayStreak}`);
+    // console.log(`[endGameSession] StreakLogic: todayString='${todayString}', lastStreakDayString='${lastStreakDayString}', current loaded consecutivePlayStreak=${userStats.consecutivePlayStreak}`);
 
     if (lastStreakDayString === null) { 
       userStats.consecutivePlayStreak = 1;
-      console.log("[endGameSession] StreakLogic: First game, streak set to 1");
+      // console.log("[endGameSession] StreakLogic: First game, streak set to 1");
     } else if (lastStreakDayString === todayString) {
-      console.log("[endGameSession] StreakLogic: Already played today, streak remains " + userStats.consecutivePlayStreak);
+      // console.log("[endGameSession] StreakLogic: Already played today, streak remains " + userStats.consecutivePlayStreak);
       // do not increment on multiple wins in the same Honolulu day
     } else { 
       const yesterdayHonolulu = new Date(nowHonolulu);
@@ -1464,14 +1505,14 @@ function endGameSession(finalTime) {
 
       if (lastStreakDayString === yesterdayString) { 
         userStats.consecutivePlayStreak = (userStats.consecutivePlayStreak || 0) + 1;
-        console.log("[endGameSession] StreakLogic: Played yesterday, streak incremented to " + userStats.consecutivePlayStreak);
+        // console.log("[endGameSession] StreakLogic: Played yesterday, streak incremented to " + userStats.consecutivePlayStreak);
       } else { 
         userStats.consecutivePlayStreak = 1; 
-        console.log("[endGameSession] StreakLogic: Missed a day, streak reset to 1");
+        // console.log("[endGameSession] StreakLogic: Missed a day, streak reset to 1");
       }
     }
     userStats.lastDayOfConsecutivePlay = todayString; 
-    console.log('[endGameSession] StreakLogic: userStats.consecutivePlayStreak is now ' + userStats.consecutivePlayStreak + ', lastDayOfConsecutivePlay is now ' + userStats.lastDayOfConsecutivePlay);
+    // console.log('[endGameSession] StreakLogic: userStats.consecutivePlayStreak is now ' + userStats.consecutivePlayStreak + ', lastDayOfConsecutivePlay is now ' + userStats.lastDayOfConsecutivePlay);
 
     // --- Existing daily streak logic for leaderboard/heatmap ---
     if (userStats.lastPlayed !== todayString) { 
@@ -1501,11 +1542,11 @@ function endGameSession(finalTime) {
     });
     userStats.winHistory = userStats.winHistory.slice(-365);
 
-    console.log('[endGameSession] UserStats before saving:', JSON.parse(JSON.stringify(userStats)));
+    // console.log('[endGameSession] UserStats before saving:', JSON.parse(JSON.stringify(userStats)));
     saveUserStats(userStats); 
     
     updateLeaderboardUI(userStats); 
-    console.log('[endGameSession] Calling updateStreakDisplay with:', userStats.consecutivePlayStreak);
+    // console.log('[endGameSession] Calling updateStreakDisplay with:', userStats.consecutivePlayStreak);
     updateStreakDisplay(userStats.consecutivePlayStreak); 
 }
 
@@ -1541,7 +1582,7 @@ document.getElementById('view-instructions-icon').addEventListener('click', func
   instructionsModal.style.display = 'block';
   instructionsModalSource = 'header';  // mark as coming from header
   document.getElementById('close-instructions-modal').textContent = '×'; // regular close button
-  console.log('Instructions modal displayed from header.');
+  // console.log('Instructions modal displayed from header.');
   
   // Add entrance animation
   const modalContent = instructionsModal.querySelector('.modal-content');
@@ -1561,3 +1602,4 @@ document.getElementById('view-instructions').addEventListener('click', function(
   // Set source flag for return navigation
   instructionsModalSource = 'start';
 });
+

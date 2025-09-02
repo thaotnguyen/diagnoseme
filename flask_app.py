@@ -4,6 +4,7 @@ import logging
 import json
 import os
 import boto3
+import uuid
 from boto3.dynamodb.conditions import Key, Attr
 from disease_selector import select_random_disease  # Import the new function
 from flask_cors import CORS
@@ -13,6 +14,9 @@ import google.generativeai as genai
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
 from dotenv import load_dotenv
+from datetime import datetime
+from flask import after_this_request
+
 project_folder = os.path.expanduser(
     '~/Development/diagnoseme')  # adjust as appropriate
 load_dotenv(os.path.join(project_folder, '.env'))
@@ -34,6 +38,9 @@ app.secret_key = 'your_secret_key'
 
 dynamodb = boto3.client('dynamodb')
 
+CONVERSATIONS_TABLE = os.getenv(
+    'CONVERSATIONS_TABLE', 'diagnosemeconversations')
+
 
 @app.before_request
 def log_request_info():
@@ -44,6 +51,100 @@ def log_request_info():
 def home():
     logging.info("Home route accessed")
     return render_template('index.html', config=app.config)
+
+
+def get_client_ip():
+    # Use a persistent, device-scoped UUID stored in a cookie.
+    device_id = request.cookies.get('device_id')
+    if device_id:
+        return device_id
+
+    new_device_id = str(uuid.uuid4())
+
+    # Set the cookie on the outgoing response so it's stable across visits.
+    try:
+
+        @after_this_request
+        def _set_device_cookie(response):
+            # Persist for ~2 years
+            max_age = 60 * 60 * 24 * 730
+            response.set_cookie(
+                'device_id',
+                new_device_id,
+                max_age=max_age,
+                httponly=True,
+                samesite='Lax',
+                secure=request.is_secure
+            )
+            return response
+    except Exception:
+        pass
+
+    return new_device_id
+
+
+@app.route('/save_conversation', methods=['POST'])
+def save_conversation():
+    """Upsert a snapshot of the current game conversation to DynamoDB."""
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+
+        user_id = get_client_ip()
+        disease = data.get('disease') or (
+            data.get('patient_context') or {}).get('disease')
+        if not disease:
+            return jsonify({'ok': False, 'error': 'Missing disease'}), 400
+
+        date_str = data.get('date') or datetime.utcnow().strftime('%Y-%m-%d')
+        training_level = data.get('training_level', 'unknown')
+        daily_streak = int(data.get('daily_streak') or 0)
+        games_played = int(data.get('games_played') or 0)
+        games_completed = int(data.get('games_completed') or 0)
+        last_played = data.get('last_played') or date_str
+        elapsed_time = int(data.get('elapsed_time') or 0)
+        conversation = data.get('conversation', '')
+
+        # Deterministic session id so multiple saves in the same session overwrite the same row.
+        # You can switch to a UUID if you prefer storing multiple parallel sessions.
+        session_id = data.get(
+            'session_id') or f"{user_id}|{date_str}|{disease}"
+
+        dynamodb.update_item(
+            TableName=CONVERSATIONS_TABLE,
+            Key={'session_id': {'S': session_id}},
+            UpdateExpression=(
+                "SET user_id = :uid, "
+                "training_level = :tl, "
+                "game_date = :gd, "
+                "disease = :dz, "
+                "daily_streak = :ds, "
+                "games_played = :gp, "
+                "games_completed = :gc, "
+                "last_played = :lp, "
+                "elapsed_time = :et, "
+                "conversation = :cv, "
+                "updated_at = :now"
+            ),
+            ExpressionAttributeValues={
+                ':uid': {'S': str(user_id)},
+                ':tl': {'S': str(training_level)},
+                ':gd': {'S': str(date_str)},
+                ':dz': {'S': str(disease)},
+                ':ds': {'N': str(daily_streak)},
+                ':gp': {'N': str(games_played)},
+                ':gc': {'N': str(games_completed)},
+                ':lp': {'S': str(last_played)},
+                ':et': {'N': str(elapsed_time)},
+                ':cv': {'S': str(conversation)},
+                ':now': {'S': datetime.utcnow().isoformat()},
+            },
+            ReturnValues='NONE'
+        )
+        return jsonify({'ok': True, 'session_id': session_id})
+    except Exception as e:
+        logging.error("Error saving conversation to DynamoDB: %s",
+                      e, exc_info=True)
+        return jsonify({'ok': False, 'error': str(e)}), 500
 
 
 def generate_patient_case(disease, case_details=None):
@@ -401,6 +502,7 @@ def get_physical_exam(question, patient_context):
         f"Use the language like a medical note."
         f"If you give away the disease name in your findings then you will be terminated."
         f"Only give the physical exam findings that the user explicitly asked for, with no other comments. Do not reveal the diagnosis under any circumstances."
+        f"Format it like this: '**PHYSICAL EXAM**: [insert physical exam findings here]'"
     )
     return call_llm_api(prompt, streaming=True, log_prefix="Physical Exam Request", advanced=True)
 

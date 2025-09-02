@@ -139,21 +139,23 @@
                 <p class="modal-subtitle">Test your clinical diagnostic skills</p>
             </div>
             <div class="modal-body">
-                <p>Practice diagnosing patients with various conditions in this medical simulation game. Ask relevant questions, order labs, conduct physical exams, and make your diagnosis.</p>
-                
-                <div class="features">
-                    <div class="feature-item">
-                        <span>🔍</span>
-                        <p>Investigate symptoms</p>
-                    </div>
-                    <div class="feature-item">
-                        <span>📊</span>
-                        <p>Order lab tests</p>
-                    </div>
-                    <div class="feature-item">
-                        <span>🏆</span>
-                        <p>Beat your best time</p>
-                    </div>
+                <p>Diagnose the mystery patient! Ask questions, order tests, and examine the AI patient to find their disease.</p>
+
+                <!-- NEW: Player role selection -->
+                <div class="input-group">
+                    <label for="player-role-select">Current training level:</label>
+                    <select id="player-role-select" class="modal-select">
+                        <option value="">Select your training level...</option>
+                        <option value="Premed">Premed</option>
+                        <option value="MS1">First-year medical student (MS1)</option>
+                        <option value="MS2">Second-year medical student (MS2)</option>
+                        <option value="MS3">Third-year medical student (MS3)</option>
+                        <option value="MS4">Fourth-year medical student (MS4)</option>
+                        <option value="Resident">Resident</option>
+                        <option value="Fellow">Fellow</option>
+                        <option value="Attending">Attending</option>
+                        <option value="Other">Other</option>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">

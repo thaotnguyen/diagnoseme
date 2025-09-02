@@ -74,6 +74,14 @@ sup {
   display: none;
 }
 
+#view-instructions {
+  display: none;
+}
+
+#welcome-modal {
+  align-items: center;
+}
+
 /* Modal Header - Base Styles */
 .modal-header {
   padding: 20px;
@@ -149,14 +157,14 @@ sup {
 
 /* Modal Body */
 .modal-body {
-  padding: 20px;
+  padding: 20px 40px;
   color: var(--imessage-dark-gray);
   line-height: 1.5;
 }
 
 /* Modal Footer */
 .modal-footer {
-  padding: 20px;
+  padding: 20px 40px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -199,7 +207,7 @@ sup {
 
 /* Unified Form Elements */
 .input-group {
-  margin-bottom: 20px;
+  margin-top: 25px;
 }
 
 .input-group label {
@@ -226,6 +234,32 @@ sup {
   border-color: var(--imessage-blue);
   outline: none;
   box-shadow: 0 0 0 2px rgba(67, 160, 71, 0.2);
+}
+
+/* Match textarea styling */
+.modal-select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: Arial, sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: border-color 0.3s ease;
+  background-color: #fff;
+}
+
+.modal-select:focus {
+  border-color: var(--imessage-blue);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+}
+
+.helper-text {
+  display: block;
+  margin-top: 8px;
+  color: var(--imessage-light-text);
+  font-size: 0.85rem;
 }
 
 /* Divider */
@@ -628,7 +662,7 @@ sup {
   }
 
   .modal-body {
-    padding: 15px;
+    padding: 15px 30px;
   }
 
   .features {
@@ -971,7 +1005,8 @@ ol {
   box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-#view-leaderboard-icon {
+#view-leaderboard-icon,
+#view-instructions-icon {
   display: none;
 }
 
