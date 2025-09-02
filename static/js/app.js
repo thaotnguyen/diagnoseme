@@ -544,7 +544,6 @@ const playerRoleSelect = document.getElementById('player-role-select');
     const savedRole = localStorage.getItem('playerRole') || '';
     if (savedRole) {
       playerRoleSelect.value = savedRole;
-      // Enable Start Game if a role is saved
     }
   })();
 
@@ -555,7 +554,7 @@ const playerRoleSelect = document.getElementById('player-role-select');
       const selected = playerRoleSelect.value;
       if (!selected) {
         playerRoleSelect.focus();
-        return;
+        // return;
       }
       // Save selection so it persists
       localStorage.setItem('playerRole', selected);
