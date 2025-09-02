@@ -9,7 +9,7 @@ project_folder = os.path.expanduser('~/Development/diagnoseme')  # adjust as app
 load_dotenv(os.path.join(project_folder, '.env'))
 
 # Get the raw secret from an environment variable.
-raw_key = os.getenv("FERNET_SECRET_KEY")
+raw_key = 'cZIRRuUr5b72dq4szDENrDBIjj4ErsY0'
 if raw_key is None:
    raise ValueError("Environment variable FERNET_SECRET_KEY is not set")
 
