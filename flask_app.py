@@ -526,7 +526,6 @@ def postgame(question, patient_context):
         f"The user has completed a patient encounter, and here are the case details: {patient_context['disease']} "
         f"This is how the encounter went: {patient_context['history']} "
         f"The user has just asked you the following question: {question}. "
-        f"Continue the conversation. Make sure the conversation flows naturally and that you are not repeating information that the user already knows. "
     )
     return call_llm_api(prompt, streaming=True, log_prefix="Postgame question", advanced=True)
 
@@ -673,6 +672,7 @@ def submit_diagnosis(question, patient_context):
             f"Let them know that they are on the right track, but they're not there just yet."
             f"Give a hint to help the user guess the correct diagnosis. "
             f"Do not give away the answer. If you give away the answer, you will be terminated."
+            f"Do not mention the correct diagnosis whatsoever. Absolutely do not mention the words at all in your hint or explanation."
             f"Output only the feedback and hint."
         )
 
