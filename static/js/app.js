@@ -10,6 +10,47 @@ document.addEventListener('DOMContentLoaded', function () {
   const userInput = document.getElementById('user-input');
   const sendButton = document.getElementById('send-button');
 
+  // NEW: placeholder installer (initialized only after game is loaded)
+  let chatPlaceholderEl = null;
+  let chatObserver = null;
+
+  function installChatPlaceholder(snippetText) {
+    // Cleanup any prior instance/observer
+    if (chatObserver) {
+      chatObserver.disconnect();
+      chatObserver = null;
+    }
+    if (chatPlaceholderEl && chatPlaceholderEl.parentNode) {
+      chatPlaceholderEl.parentNode.removeChild(chatPlaceholderEl);
+    }
+
+    chatPlaceholderEl = document.createElement('div');
+    chatPlaceholderEl.id = 'chat-placeholder';
+    chatPlaceholderEl.className = 'chat-placeholder';
+    // Extremely minimal copy with the generated intro line
+    // Example: "Ava, 7-year-old female: stomach pain."
+    const intro = (snippetText || 'Your patient: ask a first question to begin.').trim();
+    chatPlaceholderEl.textContent = `💬 ${intro}  Ask the patient a question to get started.`;
+    chatPlaceholderEl.addEventListener('click', () => userInput?.focus?.());
+
+    function toggle() {
+      const hasMessages = !!chatBox.querySelector('.message');
+      // Show only when there are no messages
+      if (!hasMessages) {
+        if (!chatPlaceholderEl.isConnected) chatBox.appendChild(chatPlaceholderEl);
+      } else {
+        if (chatPlaceholderEl.isConnected) chatPlaceholderEl.remove();
+      }
+    }
+
+    // Observe chat mutations to hide/show automatically
+    chatObserver = new MutationObserver(toggle);
+    chatObserver.observe(chatBox, { childList: true, subtree: false });
+
+    // Initial toggle
+    toggle();
+  }
+
   let vh = window.innerHeight * 0.01;
   document.documentElement.style.setProperty('--vh', `${vh}px`);
 
@@ -527,11 +568,10 @@ document.addEventListener('DOMContentLoaded', function () {
   // Function to clear chat history and UI
   function clearChatHistoryAndUI() {
     const chatBox = document.getElementById('chat-box');
-    chatBox.innerHTML = ''; // Clear chat box UI
-    localStorage.setItem('chatHistory', JSON.stringify([])); // Clear localStorage chat history
-    localStorage.removeItem('patientContext'); // Clear patient context
-    localStorage.removeItem('elapsedTime'); // Clear timer state
-    // console.log('Chat history, patient context and UI cleared.');
+    chatBox.innerHTML = '';
+
+    // If a fresh patient_context (with placeholder_snippet) is available later, re-install.
+    // This function may run before the new context arrives; the success handler should call installChatPlaceholder again.
   }
 
   // NEW: role select
@@ -639,6 +679,10 @@ const playerRoleSelect = document.getElementById('player-role-select');
     userInput.disabled = false;
     sendButton.disabled = false;
     sendButton.classList.remove('disabled');
+
+    // NEW: initialize the placeholder AFTER the game is loaded
+    const snippet = preloadedGameData?.patient_context?.placeholder_snippet;
+    installChatPlaceholder(snippet);
 
     // Display the stats in the UI
     const userStats = getUserStats();

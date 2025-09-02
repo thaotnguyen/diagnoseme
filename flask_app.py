@@ -181,6 +181,83 @@ def generate_patient_case(disease, case_details=None):
         return case['Items'][0]['gamerecord']['S']
 
 
+# Refactored function for LLM API calls using the Gemini Python API
+def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False):
+    """
+    Generic function to call the Gemini API with a prompt and handle the response.
+
+    Args:
+        prompt (str): The prompt to send to the LLM API
+        streaming (bool): Whether to use streaming API
+        log_prefix (str): Prefix for logging messages
+
+    Returns:
+        str or Response: The text response from the LLM API or a streaming response
+    """
+    try:
+        logging.info(
+            f"{log_prefix} - Sending prompt to Gemini: {prompt[:100]}...")
+
+        if streaming:
+            def generate():
+                if advanced:
+                    response = advanced_model.generate_content(
+                        prompt,
+                        stream=True
+                    )
+                else:
+                    response = model.generate_content(
+                        prompt,
+                        stream=True
+                    )
+                for chunk in response:
+                    if chunk.text:
+                        yield f"{chunk.text}\n\n\n"
+                yield "\n\n\n"
+
+            return Response(stream_with_context(generate()), mimetype='text/event-stream')
+        else:
+            if advanced:
+                response = advanced_model.generate_content(prompt)
+            else:
+                response = model.generate_content(prompt)
+            logging.info(f"{log_prefix} - Received response from Gemini")
+            return response.text
+    except Exception as e:
+        logging.error(
+            f"{log_prefix} - Request to Gemini failed: {e}", exc_info=True)
+        return f"Error communicating with LLM: {str(e)}"
+
+
+# NEW: helper to build a minimal placeholder snippet from the case/disease
+def build_placeholder_snippet(case_text: str, disease: str) -> str:
+    prompt = (
+        "You are helping build a minimal one-line chat placeholder for a medical case.\n\n"
+        f"Case context (may include demographics and disease): {case_text}\n\n"
+        "Task: Return ONE short line with:\n"
+        "- A realistic first name (first name only),\n"
+        "- Age as an integer,\n"
+        "- Sex/gender as 'male' or 'female' (use 'nonbinary' if clearly indicated),\n"
+        "- Chief complaint as an extremely short minimalistic 1-3 word phrase.\n\n"
+        "Strict output format (no quotes, no extra text, single line):\n"
+        "<Name>, <age>-year-old <gender>: <chief complaint>.\n\n"
+        "Examples:\n"
+        "Ava, 7-year-old female: stomach pain.\n"
+        "Marcus, 64-year-old male: chest pressure.\n"
+        "Return only that one line."
+    )
+    try:
+        text = call_llm_api(prompt, streaming=False,
+                            log_prefix="Build Placeholder", advanced=False)
+        line = (text or "").strip().splitlines()[0]
+        # quick sanitize
+        line = line.strip().strip('"').strip("'")
+        # keep it short
+        return line[:200] if line else "A patient: Ask a question to begin."
+    except Exception:
+        return "A patient: Ask a question to begin."
+
+
 @app.route('/start_game', methods=['POST'])
 def start_game():
     """Start the game and generate a patient case for a random disease."""
@@ -193,6 +270,9 @@ def start_game():
         patient_case = generate_patient_case(disease)
         logging.info("Generated case for disease: %s", disease)
 
+        # Build a minimal intro snippet for the placeholder
+        placeholder_snippet = build_placeholder_snippet(patient_case, disease)
+
         # Clear session history if in production
         if app.config.get("ENV") != 'development':
             session.pop('game_history', None)
@@ -204,7 +284,9 @@ def start_game():
                 "disease": disease,
                 "attempts": 2,
                 "completed": False,
-                "history": []
+                "history": [],
+                # NEW
+                "placeholder_snippet": placeholder_snippet
             }
         }
     except Exception as e:
@@ -622,13 +704,18 @@ def clear_history():
 
         patient_case = generate_patient_case(disease)
 
+        # NEW: Build a fresh placeholder snippet for the new round
+        placeholder_snippet = build_placeholder_snippet(patient_case, disease)
+
         # Create new patient context
         patient_context = {
             "disease": disease,
             "attempts": 2,
             "completed": False,
             "history": [],
-            "case": patient_case
+            "case": patient_case,
+            # NEW
+            "placeholder_snippet": placeholder_snippet
         }
 
         # Clear session history if in production
