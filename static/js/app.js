@@ -232,26 +232,28 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   // Update the function that handles the correct answer to the high-yield question
-  function handleCorrect() {
-    // Existing code for displaying celebration graphics
-    displayCelebration();
-    
-    // Launch confetti animation
-    if (typeof window.launchConfetti === 'function') {
-      window.launchConfetti();
-      // console.log('Confetti animation launched.');
-    } else {
-      // console.error('Confetti animation function not available.');
-    }
+  function handleEnd(correct) {
+    if (correct) {
+      // Existing code for displaying celebration graphics
+      displayCelebration();
 
-    // Play the jingle
-    // jingleAudio.play()
-    //   .then(() => {
-    //     console.log('Jingle played successfully.');
-    //   })
-    //   .catch(error => {
-    //     console.error('Error playing jingle:', error);
-    //   });
+      // Play the jingle
+      jingleAudio.play()
+      .then(() => {
+        console.log('Jingle played successfully.');
+      })
+      .catch(error => {
+        console.error('Error playing jingle:', error);
+      });
+      
+      // Launch confetti animation
+      if (typeof window.launchConfetti === 'function') {
+        window.launchConfetti();
+        // console.log('Confetti animation launched.');
+      } else {
+        // console.error('Confetti animation function not available.');
+      }
+    }
 
     // Stop the timer when the game ends with the correct diagnosis
     stopTimer();
@@ -992,12 +994,23 @@ const playerRoleSelect = document.getElementById('player-role-select');
                     return;
                   }
                   let newText = decoder.decode(value, { stream: true });
+                  console.log('Received chunk:', newText);
                   if (newText.includes('%%%') && !window.patientContext.completed) {
                     // console.log('Correct answer found');
                     patientMessage.style.maxWidth = '100%';
-                    handleCorrect();
+                    handleEnd(true);
                     window.patientContext.completed = true;
                     newText = newText.replace('%%%', '');
+                    // Disable inputs when game ends
+                    userInput.disabled = true;
+                    sendButton.disabled = true;
+                    sendButton.classList.add('disabled');
+                  }
+                  if (newText.includes('~~~') && !window.patientContext.completed) {
+                    patientMessage.style.maxWidth = '100%';
+                    handleEnd(false);
+                    window.patientContext.completed = true;
+                    newText = newText.replace('~~~', '');
                     // Disable inputs when game ends
                     userInput.disabled = true;
                     sendButton.disabled = true;

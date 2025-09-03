@@ -11,6 +11,7 @@ from flask_cors import CORS
 # Importing the new function
 # Import Google Generative AI library
 import google.generativeai as genai
+from google.genai import types
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
 from dotenv import load_dotenv
@@ -40,6 +41,13 @@ dynamodb = boto3.client('dynamodb')
 
 CONVERSATIONS_TABLE = os.getenv(
     'CONVERSATIONS_TABLE', 'diagnosemeconversations')
+
+grounding_tool = types.Tool(
+    google_search=types.GoogleSearch()
+)
+config = types.GenerateContentConfig(
+    tools=[grounding_tool]
+)
 
 
 @app.before_request
@@ -182,7 +190,7 @@ def generate_patient_case(disease, case_details=None):
 
 
 # Refactored function for LLM API calls using the Gemini Python API
-def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False):
+def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, grounding=False):
     """
     Generic function to call the Gemini API with a prompt and handle the response.
 
@@ -203,12 +211,14 @@ def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False):
                 if advanced:
                     response = advanced_model.generate_content(
                         prompt,
-                        stream=True
+                        stream=True,
+                        config=config if grounding else None
                     )
                 else:
                     response = model.generate_content(
                         prompt,
-                        stream=True
+                        stream=True,
+                        config=config if grounding else None
                     )
                 for chunk in response:
                     if chunk.text:
@@ -449,6 +459,7 @@ def route_question(question):
         f"B - Lab result requests\n"
         f"C - Physical exam requests\n"
         f"D - Diagnosis attempts\n\n"
+        f"E - Giving up or asking for the answer\n\n"
         f"If the question doesn't fit cleanly into any category, classify it as category A (direct question to the patient).\n\n"
 
         f"Here are some examples:\n\n"
@@ -513,6 +524,18 @@ def route_question(question):
         f"User: 'my diagnosis is diabetes'\n"
         f"Assistant: D\n\n"
 
+        f"User: 'i give up, what is it?'\n"
+        f"Assistant: E\n\n"
+
+        f"User: 'what is the answer?'\n"
+        f"Assistant: E\n\n"
+
+        f"User: 'what is the diagnosis?'\n"
+        f"Assistant: E\n\n"
+
+        f"User: 'i dont know what it is'\n"
+        f"Assistant: A\n\n"
+
         f"User: '{question}'\n"
         f"Assistant:"
     )
@@ -525,9 +548,10 @@ def postgame(question, patient_context):
         f"You are an helpful, knowledgable, and kind AI patient simulator to help people in medicine practice clinical reasoning. "
         f"The user has completed a patient encounter, and here are the case details: {patient_context['disease']} "
         f"This is how the encounter went: {patient_context['history']} "
-        f"The user has just asked you the following question: {question}. "
+        f"Now the encounter is over, and now it's the postgame phase. "
+        f"The user has just asked the following question: {question}. "
     )
-    return call_llm_api(prompt, streaming=True, log_prefix="Postgame question", advanced=True)
+    return call_llm_api(prompt, streaming=True, log_prefix="Postgame question", advanced=True, grounding=True)
 
 
 def ask_patient_question(question, patient_context):
@@ -636,12 +660,32 @@ def get_llm_response(question, patient_context):
             return get_physical_exam(question, patient_context)
         elif route == 'D':
             return submit_diagnosis(question, patient_context)
+        elif route == 'E':
+            return give_up(question, patient_context)
         else:
             # Fallback for unclassified or unexpected routes
             logging.warning(
                 f"Unknown route '{route}' for question: {question}")
             # Default to treating as a patient question or provide a generic response
             return ask_patient_question(question, patient_context)
+
+
+def give_up(question, patient_context):
+    """Function to handle when the user gives up or asks for the answer."""
+    prompt = (
+        f"You are an AI patient simulator to help medical users practice clinical reasoning. "
+        f"The patient has {patient_context['disease']}."
+        f"Here are the case details: {patient_context['case']} "
+        f"This is how the conversation has gone so far: {patient_context['history']} "
+        f"The user has just asked you the following question: {question}. "
+        f"Let them know that they have chosen to give up, and then reveal the correct diagnosis. "
+        f"Explain in detail why this is the correct diagnosis, referencing specific parts of the case and history. "
+        f"Do not be condescending or rude. Be kind and educational."
+        f"Output only the feedback and correct diagnosis with explanation."
+        f"Format it like this: '~~~ [insert feedback here]'"
+    )
+    return call_llm_api(prompt, streaming=True,
+                        log_prefix="User Gave Up")
 
 
 def submit_diagnosis(question, patient_context):
