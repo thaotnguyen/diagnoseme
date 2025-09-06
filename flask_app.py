@@ -11,7 +11,6 @@ from flask_cors import CORS
 # Importing the new function
 # Import Google Generative AI library
 import google.generativeai as genai
-from google.genai import types
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
 from dotenv import load_dotenv
@@ -41,13 +40,6 @@ dynamodb = boto3.client('dynamodb')
 
 CONVERSATIONS_TABLE = os.getenv(
     'CONVERSATIONS_TABLE', 'diagnosemeconversations')
-
-grounding_tool = types.Tool(
-    google_search=types.GoogleSearch()
-)
-config = types.GenerateContentConfig(
-    tools=[grounding_tool]
-)
 
 
 @app.before_request
@@ -212,13 +204,11 @@ def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, groundi
                     response = advanced_model.generate_content(
                         prompt,
                         stream=True,
-                        config=config if grounding else None
                     )
                 else:
                     response = model.generate_content(
                         prompt,
                         stream=True,
-                        config=config if grounding else None
                     )
                 for chunk in response:
                     if chunk.text:
@@ -248,7 +238,7 @@ def build_placeholder_snippet(case_text: str, disease: str) -> str:
         "- A realistic first name (first name only),\n"
         "- Age as an integer,\n"
         "- Sex/gender as 'male' or 'female' (use 'nonbinary' if clearly indicated),\n"
-        "- Chief complaint as an extremely short minimalistic 1-3 word phrase.\n\n"
+        "- Chief complaint as an extremely short minimalistic 1-3 word phrase. Only give one symptom, not two or more.\n\n"
         "Strict output format (no quotes, no extra text, single line):\n"
         "<Name>, <age>-year-old <gender>: <chief complaint>.\n\n"
         "Examples:\n"
@@ -474,6 +464,9 @@ def route_question(question):
         f"Assistant: A\n\n"
 
         f"User: 'pmh'\n"
+        f"Assistant: A\n\n"
+
+        f"User: where is the pain?\n"
         f"Assistant: A\n\n"
 
         f"User: 'have you had a cbc?'\n"
@@ -703,6 +696,7 @@ def submit_diagnosis(question, patient_context):
             f"This is the user's guess {question}."
             f"Let them know they are incorrect."
             f"Do not give away the answer under any circumstances, but give an additional finding to help the user guess the correct diagnosis. "
+            f"Do not reference any new information that they have not already asked for or been given."
             f"If you give away the answer, you will be terminated."
             f"Output only the feedback and hint."
         )
