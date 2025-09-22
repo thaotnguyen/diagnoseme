@@ -306,7 +306,7 @@ def build_placeholder_snippet(case_text: str, disease: str) -> str:
         "- Setting (e.g. outpatient, inpatient, emergency room, ICU, clinic, etc),\n"
         "- Chief complaint as an extremely short minimalistic 1-3 word phrase. Only give one symptom, not two or more.\n\n"
         "Strict output format (no quotes, no extra text, single line):\n"
-        "<Name>, <age>-year-old <gender>: <chief complaint>.\n\n"
+        "<Name>, <age>-year-old <gender>, <setting>: <chief complaint>.\n\n"
         "Examples:\n"
         "Ava, 7-year-old female, outpatient: stomach pain.\n"
         "Marcus, 64-year-old male, emergency room: chest pressure.\n"
@@ -437,6 +437,7 @@ def start_custom_game():
         logging.info("Selected case description for the game: %s",
                      case_description)
         patient_case = generate_patient_case(disease, case_description)
+        placeholder_snippet = build_placeholder_snippet(patient_case, disease)
         # Clear session history if in production
         if app.config.get("ENV") != 'development':
             session.pop('game_history', None)
@@ -448,7 +449,8 @@ def start_custom_game():
                 "disease": disease,
                 "attempts": 2,
                 "completed": False,
-                "history": []
+                "history": [],
+                "placeholder_snippet": placeholder_snippet
             }
         }
     except Exception as e:
