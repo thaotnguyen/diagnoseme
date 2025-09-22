@@ -4,11 +4,14 @@ import logging
 from datetime import datetime, timedelta, timezone
 
 
-def select_random_disease():
+def select_random_disease(case_of_the_day=True):
     """Select a random disease from the USMLE curriculum."""
-    today_date = datetime.now(
-        timezone(timedelta(hours=-10))).strftime("%Y-%m-%d")
-    random.seed(today_date)
+    if case_of_the_day:
+        today_date = datetime.now(
+            timezone(timedelta(hours=-10))).strftime("%Y-%m-%d")
+        random.seed(today_date)
+    else:
+        random.seed()
     try:
         disease = random.choice(DISEASES)
         logging.info("Randomly selected disease: %s", disease)

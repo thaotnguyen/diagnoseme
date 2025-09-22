@@ -39,7 +39,10 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!hasMessages) {
         if (!chatPlaceholderEl.isConnected) chatBox.appendChild(chatPlaceholderEl);
       } else {
-        if (chatPlaceholderEl.isConnected) chatPlaceholderEl.remove();
+        if (chatPlaceholderEl.isConnected) {
+          chatPlaceholderEl.textContent = '';
+          chatPlaceholderEl.remove();
+        }
       }
     }
 
@@ -231,49 +234,141 @@ document.addEventListener('DOMContentLoaded', function () {
     // console.log('Timer stopped at', elapsedTime, 'seconds.');
   }
 
-  // Update the function that handles the correct answer to the high-yield question
+  // Update the function that handles the correct answer
   function handleEnd(correct) {
-    if (correct) {
-      // Existing code for displaying celebration graphics
-      displayCelebration();
+      if (correct) {
+          // Existing code for displaying celebration graphics
+          displayCelebration();
 
-      // Play the jingle
-      jingleAudio.play()
-      .then(() => {
-        console.log('Jingle played successfully.');
+          // Play the jingle
+          jingleAudio.play()
+          .then(() => {
+              console.log('Jingle played successfully.');
+          })
+          .catch(error => {
+              console.error('Error playing jingle:', error);
+          });
+          
+          // Launch confetti animation
+          if (typeof window.launchConfetti === 'function') {
+              window.launchConfetti();
+          }
+      }
+
+      // Stop the timer when the game ends with the correct diagnosis
+      stopTimer();
+
+      // Call endGameSession with the elapsed time when the high-yield question is answered correctly
+      endGameSession(elapsedTime); // Pass the total time taken
+
+      // Ensure the client-side patientContext reflects that the game is completed
+      if (window.patientContext) {
+          window.patientContext.completed = true;
+          localStorage.setItem('patientContext', JSON.stringify(window.patientContext));
+      }
+
+      // NEW: Replace input area with "Play a random case" button
+      const inputArea = document.getElementById('input-area');
+      const textBox = document.getElementById('user-input');
+      const sendButton = document.getElementById('send-button');
+      const newRandomCaseButton = document.getElementById('play-random-case');
+      if (inputArea) {
+          
+          // Replace with the new play button
+          textBox.style.display = 'none';
+          sendButton.style.display = 'none';
+          newRandomCaseButton.style.display = 'inline-block';
+          
+          // Add event listener to the new button
+          newRandomCaseButton.addEventListener('click', startRandomCase);
+      }
+  }
+
+  // NEW: Function to start a new random case
+  function startRandomCase() {
+      // Clear chat history UI
+      clearChatHistoryAndUI();
+    
+      // Show loading indicator
+      const caseLoadingIndicator = document.getElementById('case-loading-indicator');
+      if (caseLoadingIndicator) {
+          caseLoadingIndicator.style.display = 'block';
+      }
+      
+      // Store previous disease to avoid repetition
+      const previousDisease = window.patientContext ? window.patientContext.disease : null;
+
+      
+      
+      // Make API call to get a new random case
+      fetch('/new_random_case', {
+          method: 'POST',
+          headers: {
+              'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+              previous_disease: previousDisease
+          }),
+      })
+      .then(response => response.json())
+      .then(data => {
+          if (data.error) {
+              console.error("Error starting new random case:", data.error);
+              return;
+          }
+
+          isLoading = false;
+          gameLoading = false;
+                    
+          // Reset game state
+          window.patientContext = {
+              attempts: 2,
+              completed: false,
+              history: [],
+              disease: data.patient_context.disease,
+              case: data.patient_context.case,
+              placeholder_snippet: data.patient_context.placeholder_snippet
+          };
+
+          localStorage.setItem('patientContext', JSON.stringify(window.patientContext));
+          localStorage.setItem('chatHistory', JSON.stringify([])); // Clear chat history in local storage
+          localStorage.setItem('case', JSON.stringify(window.patientContext.case));
+          localStorage.removeItem('elapsedTime');
+          
+          // Reset timer
+          timerStarted = false;
+          elapsedTime = 0;
+          document.getElementById('timer').textContent = formatTime(elapsedTime);
+          clearInterval(timerInterval);
+
+          const textBox = document.getElementById('user-input');
+          const sendButton = document.getElementById('send-button');
+          const newRandomCaseButton = document.getElementById('play-random-case');
+                    
+          // Hide loading indicator
+          if (caseLoadingIndicator) {
+              caseLoadingIndicator.style.display = 'none';
+          }
+
+          textBox.style.display = 'inline-block';
+          sendButton.style.display = 'inline-block';
+          newRandomCaseButton.style.display = 'none';
+          textBox.focus();
+
+          installChatPlaceholder(data.patient_context.placeholder_snippet);
+          
+          // Start the timer when ready
+          startTimer();
       })
       .catch(error => {
-        console.error('Error playing jingle:', error);
+          console.error("Error fetching new random case:", error);
+          // Hide loading indicator on error
+          if (caseLoadingIndicator) {
+              caseLoadingIndicator.style.display = 'none';
+          }
+          // Show error message
+          alert("Failed to load a new case. Please try again.");
       });
-      
-      // Launch confetti animation
-      if (typeof window.launchConfetti === 'function') {
-        window.launchConfetti();
-        // console.log('Confetti animation launched.');
-      } else {
-        // console.error('Confetti animation function not available.');
-      }
-    }
-
-    // Stop the timer when the game ends with the correct diagnosis
-    stopTimer();
-
-    // Call endGameSession with the elapsed time when the high-yield question is answered correctly
-    endGameSession(elapsedTime); // Pass the total time taken
-
-    // Ensure the client-side patientContext reflects that the game is completed
-    if (window.patientContext) {
-      window.patientContext.completed = true;
-      localStorage.setItem('patientContext', JSON.stringify(window.patientContext));
-      // console.log('Game marked as completed in client-side patientContext:', window.patientContext);
-    }
-
-    // Ensure user input is enabled for follow-up questions
-    userInput.disabled = false;
-    sendButton.disabled = false;
-    // Optionally, change the placeholder to guide the user
-    userInput.placeholder = "Ask follow-up questions about the case or your feedback...";
-
   }
 
   // Function to check if the user's answer is correct
@@ -349,8 +444,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const stats = getUserStats();
     const last = stats.lastDayOfConsecutivePlay;
-    if (!last) return; // nothing to do yet
-    if (last !== todayString && last !== yesterdayString) {
+    
+    // If no last play date, or if it's not today or yesterday, reset streak
+    if (!last || (last !== todayString && last !== yesterdayString)) {
       if (stats.consecutivePlayStreak !== 0) {
         stats.consecutivePlayStreak = 0;
         saveUserStats(stats);
@@ -570,6 +666,7 @@ document.addEventListener('DOMContentLoaded', function () {
   // Function to clear chat history and UI
   function clearChatHistoryAndUI() {
     const chatBox = document.getElementById('chat-box');
+
     chatBox.innerHTML = '';
 
     // If a fresh patient_context (with placeholder_snippet) is available later, re-install.
@@ -658,6 +755,7 @@ const playerRoleSelect = document.getElementById('player-role-select');
     // Clear chat history in local storage
     if (!customCaseMode) {
       localStorage.setItem('chatHistory', JSON.stringify([]));
+      localStorage.setItem('case', JSON.stringify(preloadedGameData.patient_context.case));
     }
     // console.log('Chat history in local storage cleared.');
 
@@ -1277,6 +1375,34 @@ const playerRoleSelect = document.getElementById('player-role-select');
     }
     instructionsModalSource = null;
   });
+  document.head.insertAdjacentHTML('beforeend', `
+      <style>
+          .play-again-button {
+              background-color: #4caf50;
+              color: white;
+              border: none;
+              padding: 12px 20px;
+              text-align: center;
+              text-decoration: none;
+              display: block;
+              font-size: 16px;
+              margin: 10px auto;
+              cursor: pointer;
+              border-radius: 8px;
+              transition: background-color 0.3s;
+              width: 100%;
+              max-width: 300px;
+          }
+          
+          .play-again-button:hover {
+              background-color: #45a049;
+          }
+          
+          .play-again-button:active {
+              transform: scale(0.98);
+          }
+      </style>
+  `);
 });
 
 // Move these variables to global scope (before the DOMContentLoaded event)

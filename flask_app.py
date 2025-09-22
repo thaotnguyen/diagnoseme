@@ -83,6 +83,70 @@ def get_client_ip():
     return new_device_id
 
 
+user_played_diseases = {}
+
+
+@app.route('/new_random_case', methods=['POST'])
+def new_random_case():
+    """Get a new random case that's different from previously played cases today."""
+    try:
+        data = request.get_json() or {}
+        previous_disease = data.get('previous_disease')
+
+        # Get user identifier
+        user_id = get_client_ip()
+
+        # Initialize played diseases set for this user if not exists
+        if user_id not in user_played_diseases:
+            user_played_diseases[user_id] = set()
+
+        # Add previous disease to played set if provided
+        if previous_disease:
+            user_played_diseases[user_id].add(previous_disease)
+
+        # Get a disease that hasn't been played today by this user
+        max_attempts = 10  # Avoid infinite loop
+        disease = None
+        for _ in range(max_attempts):
+            disease = select_random_disease(case_of_the_day=False)
+            if disease not in user_played_diseases[user_id]:
+                break
+
+        if not disease or disease in user_played_diseases[user_id]:
+            # If we couldn't find a new disease after max attempts, just use any random one
+            # This is a fallback and should rarely happen
+            disease = select_random_disease()
+
+        # Add to played diseases
+        user_played_diseases[user_id].add(disease)
+
+        logging.info(f"Selected new random disease: {disease}")
+
+        # Generate patient case
+        patient_case = generate_patient_case(disease)
+
+        # Build placeholder snippet
+        placeholder_snippet = build_placeholder_snippet(patient_case, disease)
+
+        # Return the new case details
+        return jsonify({
+            "message": "New random case generated",
+            "patient_context": {
+                "case": patient_case,
+                "disease": disease,
+                "attempts": 2,
+                "completed": False,
+                "history": [],
+                "placeholder_snippet": placeholder_snippet
+            }
+        })
+    except Exception as e:
+        logging.error(f"Error generating new random case: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to generate new case: {str(e)}"}), 500
+
+# Modify save_conversation to ensure unique sessions
+
+
 @app.route('/save_conversation', methods=['POST'])
 def save_conversation():
     """Upsert a snapshot of the current game conversation to DynamoDB."""
@@ -104,10 +168,11 @@ def save_conversation():
         elapsed_time = int(data.get('elapsed_time') or 0)
         conversation = data.get('conversation', '')
 
-        # Deterministic session id so multiple saves in the same session overwrite the same row.
-        # You can switch to a UUID if you prefer storing multiple parallel sessions.
+        # NEW: Create a unique session ID for each game play using timestamp
+        # This ensures each game is saved as a separate entity
+        timestamp = datetime.utcnow().isoformat()
         session_id = data.get(
-            'session_id') or f"{user_id}|{date_str}|{disease}"
+            'session_id') or f"{user_id}|{date_str}|{disease}|{timestamp}"
 
         dynamodb.update_item(
             TableName=CONVERSATIONS_TABLE,
@@ -165,7 +230,7 @@ def generate_patient_case(disease, case_details=None):
     if not case['Items']:
         print("Case does not exist in DynamoDB, generating a new one.")
         medrag = MedRAG(llm_name="Google/gemini-2.5-flash", rag=True, follow_up=True,
-                        retriever_name="MedCPT", corpus_name="Textbooks", corpus_cache=True)
+                        retriever_name="MedCPT", corpus_name="MedText", corpus_cache=True)
         new_case = medrag.generate_medical_case(disease, case_details)
         dynamodb.put_item(
             TableName='diagnosemecases',
@@ -238,12 +303,13 @@ def build_placeholder_snippet(case_text: str, disease: str) -> str:
         "- A realistic first name (first name only),\n"
         "- Age as an integer,\n"
         "- Sex/gender as 'male' or 'female' (use 'nonbinary' if clearly indicated),\n"
+        "- Setting (e.g. outpatient, inpatient, emergency room, ICU, clinic, etc),\n"
         "- Chief complaint as an extremely short minimalistic 1-3 word phrase. Only give one symptom, not two or more.\n\n"
         "Strict output format (no quotes, no extra text, single line):\n"
         "<Name>, <age>-year-old <gender>: <chief complaint>.\n\n"
         "Examples:\n"
-        "Ava, 7-year-old female: stomach pain.\n"
-        "Marcus, 64-year-old male: chest pressure.\n"
+        "Ava, 7-year-old female, outpatient: stomach pain.\n"
+        "Marcus, 64-year-old male, emergency room: chest pressure.\n"
         "Return only that one line."
     )
     try:
@@ -312,7 +378,7 @@ def submit_case():
         disease_name, case_description, encrypt=True)
 
     medrag = MedRAG(llm_name="Google/gemini-2.0-flash", rag=True, follow_up=True,
-                    retriever_name="MedCPT", corpus_name="Textbooks", corpus_cache=True)
+                    retriever_name="MedCPT", corpus_name="MedText", corpus_cache=True)
 
     dynamodb.put_item(
         TableName='diagnosemecases',
@@ -450,6 +516,8 @@ def route_question(question):
         f"C - Physical exam requests\n"
         f"D - Diagnosis attempts\n\n"
         f"E - Giving up or asking for the answer\n\n"
+        f"F - Disallowed actions (i.e. starting to start a new case)"
+        f"G - Too broad of a physical exam (i.e. 'full physical exam', 'complete physical exam', 'head to toe exam, 'neuro exam')\n\n"
         f"If the question doesn't fit cleanly into any category, classify it as category A (direct question to the patient).\n\n"
 
         f"Here are some examples:\n\n"
@@ -526,8 +594,32 @@ def route_question(question):
         f"User: 'what is the diagnosis?'\n"
         f"Assistant: E\n\n"
 
+        f"User: 'tell me the answer'\n"
+        f"Assistant: E\n\n"
+
+        f"User: can i get a new case\n"
+        f"Assistant: F\n\n"
+
+        f"User: start a new case\n"
+        f"Assistant: F\n\n"
+
         f"User: 'i dont know what it is'\n"
         f"Assistant: A\n\n"
+
+        f"User: physical exam\n"
+        f"Assistant: G\n\n"
+
+        f"User: neuro exam\n"
+        f"Assistant: G\n\n"
+
+        f"User: all labs\n"
+        f"Assistant: G\n\n"
+
+        f"User: mri\n"
+        f"Assistant: G\n\n"
+
+        f'User: mri brain\n'
+        f"Assistant: B\n\n"
 
         f"User: '{question}'\n"
         f"Assistant:"
@@ -574,6 +666,7 @@ def get_labs(question, patient_context):
         f"The user has asked for the following labs: {question}. "
         f"Give the lab report that would be typical for a patient with the disease and the case."
         f"Use the language of a lab report, without revealing the diagnosis. "
+        f"Do not include MRN or ID or anything unnecessary. Just the lab results."
         f"Only give lab results that the user explicitly asked for."
         f"Give a report regardless of whether or not the lab is indicated for the case. "
         f"If the requested lab is not relevant for the case, return normal results."
@@ -613,10 +706,10 @@ def get_clinical_feedback(patient_context):
         f"Here is the transcript of the clinical encounter, with user messages and patient responses: {'\n'.join(patient_context['history'])} "
         f"Provide brief, congratulatory feedback on their performance. "
         f"Mention one thing they did well. "
-        f"Comment on one area for improvement. For example (not limited to these): Did they ask for all red flag symptoms correctly? Did they prematurely jump to labs? Did they show empathy?"
+        f"Comment on one area for improvement. For example (not limited to these): Did they ask questions indicating that they closed prematurely? Did they ask for all red flag symptoms correctly? Did they prematurely jump to labs? Did they show empathy?"
         f"Remember to keep your feedback constructive and focused on the student's performance."
         f"Bold especially salient points."
-        f"Only reference things that happened in the transcript."
+        f"Only reference things that happened in the transcript, except previous incorrect diagnoses — just ignore those."
         f"Output your feedback with this format: '%%% [insert feedback here]'"
     )
     return call_llm_api(prompt, streaming=True, log_prefix="Clinical Feedback", advanced=True)
@@ -655,12 +748,50 @@ def get_llm_response(question, patient_context):
             return submit_diagnosis(question, patient_context)
         elif route == 'E':
             return give_up(question, patient_context)
+        elif route == 'F':
+            return disallowed_actions(question, patient_context)
+        elif route == 'G':
+            return too_broad_physical_exam(question, patient_context)
         else:
             # Fallback for unclassified or unexpected routes
             logging.warning(
                 f"Unknown route '{route}' for question: {question}")
             # Default to treating as a patient question or provide a generic response
             return ask_patient_question(question, patient_context)
+
+
+def disallowed_actions(question, patient_context):
+    """Function to handle disallowed actions like starting a new case."""
+    prompt = (
+        f"You are an AI patient simulator to help medical users practice clinical reasoning. "
+        f"The patient has {patient_context['disease']}."
+        f"Here are the case details: {patient_context['case']} "
+        f"This is how the conversation has gone so far: {patient_context['history']} "
+        f"The user has just asked you the following question: {question}. "
+        f"Let them know that the action they requested isn't allowed in this game. "
+        f"Encourage them to continue with the current case instead."
+        f"Do not be condescending or rude. Be kind and educational."
+        f"Output only the feedback."
+    )
+    return call_llm_api(prompt, streaming=True,
+                        log_prefix="Disallowed Action")
+
+
+def too_broad_physical_exam(question, patient_context):
+    """Function to handle too broad physical exam requests."""
+    prompt = (
+        f"You are an AI patient simulator to help medical users practice clinical reasoning. "
+        f"The patient has {patient_context['disease']}."
+        f"Here are the case details: {patient_context['case']} "
+        f"This is how the conversation has gone so far: {patient_context['history']} "
+        f"The user has just asked you the following question: {question}. "
+        f"Let them know that their request for a physical exam is too broad or vague. "
+        f"Encourage them to be more specific about which part of the physical exam they would like to perform."
+        f"Do not be condescending or rude. Be kind and educational."
+        f"Output only the feedback."
+    )
+    return call_llm_api(prompt, streaming=True,
+                        log_prefix="Too Broad Physical Exam")
 
 
 def give_up(question, patient_context):
@@ -736,6 +867,13 @@ def generate_response():
 @app.route('/clear_history', methods=['POST'])
 def clear_history():
     try:
+        # Get user ID
+        user_id = get_client_ip()
+
+        # Clear user's played diseases for today if tracking
+        if user_id in user_played_diseases:
+            user_played_diseases[user_id] = set()
+
         # Select a new random disease for the next game
         disease = select_random_disease()
         logging.info("Selected new disease after history clear: %s", disease)
