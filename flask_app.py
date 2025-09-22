@@ -709,6 +709,7 @@ def get_clinical_feedback(patient_context):
         f"Provide brief, congratulatory feedback on their performance. "
         f"Mention one thing they did well. "
         f"Comment on one area for improvement. For example (not limited to these): Did they ask questions indicating that they closed prematurely? Did they ask for all red flag symptoms correctly? Did they prematurely jump to labs? Did they show empathy?"
+        f"Remember to note red flag serious acute pathologies with a similar chief complaint, and make sure that the user ruled them out properly."
         f"Remember to keep your feedback constructive and focused on the student's performance."
         f"Bold especially salient points."
         f"Only reference things that happened in the transcript, except previous incorrect diagnoses — just ignore those."
