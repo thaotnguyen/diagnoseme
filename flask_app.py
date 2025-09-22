@@ -406,6 +406,7 @@ def custom_case(token):
         disease = case_data.get('disease')
         case_description = case_data.get('case_description')
         logging.info("Custom case loaded for disease: %s", disease)
+        patient_case = generate_patient_case(disease, case_description)
         # Build a custom patient context and mark it as custom.
         patient_context = {
             'disease': disease,
@@ -413,7 +414,8 @@ def custom_case(token):
             'attempts': 2,
             'completed': False,
             'history': [],
-            'custom': True
+            'custom': True,
+            'placeholder_snippet': build_placeholder_snippet(patient_case, disease)
         }
         # Render the same index page but pass the custom context.
         logging.info(

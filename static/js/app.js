@@ -107,9 +107,12 @@ document.addEventListener('DOMContentLoaded', function () {
     
     // Hide the welcome modal immediately.
     const welcomeModal = document.getElementById('welcome-modal');
+    const welcomeModalHeader = document.querySelector('.modal-header--primary');
     if (welcomeModal) {
-        welcomeModal.style.display = 'none';
+        welcomeModal.style.display = 'flex';
     }
+    preloadGameCase();
+    fixInputToBottom();
   } else {
     // console.log("Standard case mode detected");
     // Load chat history and continue game if history exists
@@ -354,6 +357,7 @@ document.addEventListener('DOMContentLoaded', function () {
           sendButton.style.display = 'inline-block';
           newRandomCaseButton.style.display = 'none';
           textBox.focus();
+          fixInputToBottom();
 
           installChatPlaceholder(data.patient_context.placeholder_snippet);
           
@@ -597,7 +601,7 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
     function preloadGameCase() {
-    // console.log('Preloading game case on page load.');
+    console.log('Preloading game case on page load.');
     gameLoading = true;
 
     // Show the case loading indicator instead of the message typing indicator
@@ -837,7 +841,7 @@ const playerRoleSelect = document.getElementById('player-role-select');
       // Hide the welcome modal immediately.
       const welcomeModal = document.getElementById('welcome-modal');
       if (welcomeModal) {
-          welcomeModal.style.display = 'none';
+          welcomeModal.style.display = 'flex';
       }
     } else {
       // console.log("Standard case mode detected");
