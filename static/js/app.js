@@ -1307,97 +1307,61 @@ const playerRoleSelect = document.getElementById('player-role-select');
       });
   });
 
-  // Generate case functionality
-  document.getElementById('generate-case-btn').addEventListener('click', function() {
-      const chiefComplaint = document.getElementById('chief-complaint').value.trim();
-      const specialty = document.getElementById('specialty').value;
+document.getElementById('generate-case-btn').addEventListener('click', function() {
+    const chiefComplaint = document.getElementById('chief-complaint').value.trim();
+    const specialty = document.getElementById('specialty').value;
 
-      // Both fields are now optional - no validation required
-      // if (!chiefComplaint && !specialty) {
-      //     alert("Please enter at least a chief complaint or select a specialty.");
-      //     return;
-      // }
+    const generateButton = document.getElementById('generate-case-btn');
+    generateButton.innerHTML = '<span class="loading-spinner"></span> Generating...';
+    generateButton.disabled = true;
 
-      // Show loading state
-      const generateButton = document.getElementById('generate-case-btn');
-      generateButton.innerHTML = '<span class="loading-spinner"></span> Generating...';
-      generateButton.disabled = true;
+    fetch('/generate_case_by_criteria', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            chief_complaint: chiefComplaint,
+            specialty: specialty
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        generateButton.innerHTML = 'Generate Case';
+        generateButton.disabled = false;
 
-      // Call the endpoint to generate the case
-      fetch('/generate_case_by_criteria', {
-          method: 'POST',
-          headers: {
-              'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ 
-              chief_complaint: chiefComplaint, 
-              specialty: specialty 
-          })
-      })
-      .then(response => response.json())
-      .then(data => {
-          // Reset button state
-          generateButton.innerHTML = 'Generate Case';
-          generateButton.disabled = false;
-          
-          if (data.disease && data.patient_context) {
-              // Store the generated case data globally
-              
-              // Show the result container with animation
-              const resultContainer = document.getElementById('generate-result-container');
-              resultContainer.style.display = 'block';
-                            
-              // Scroll to the result section
-              resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-              
-          } else {
-              alert("Error generating case. Please try again.");
-          }
-      })
-      .catch(error => {
-          console.error('Error during generate case fetch:', error);
-          
-          // Reset button state
-          generateButton.innerHTML = 'Generate Case';
-          generateButton.disabled = false;
-          
-          alert("An error occurred. Please try again.");
-      });
-  });
+        if (data && data.url) {
+            // Store the generated case URL globally so the Play button can use it
+            window.generatedCaseUrl = data.url;
 
-  // Play generated case functionality
-  document.getElementById('play-generated-case').addEventListener('click', function() {
-      if (window.generatedCaseData) {
-          // Clear the current game state
-          clearChatHistoryAndUI();
-          
-          // Set the new patient context
-          window.patientContext = window.generatedCaseData;
-          
-          // Close the modal
-          document.getElementById('generate-case-modal').style.display = 'none';
-          
-          // Start the timer
-          startTimer();
-          
-          // Install chat placeholder
-          if (window.generatedCaseData.placeholder_snippet) {
-              installChatPlaceholder(window.generatedCaseData.placeholder_snippet);
-          }
-          
-          // Enable input
-          const userInput = document.getElementById('user-input');
-          const sendButton = document.getElementById('send-button');
-          userInput.disabled = false;
-          sendButton.disabled = false;
-          sendButton.classList.remove('disabled');
-          
-          // Focus on input
-          userInput.focus();
-          
-          console.log('New generated case started:', window.patientContext);
-      }
-  });
+            // Reveal the result block (now exists in the HTML)
+            const resultContainer = document.getElementById('generate-result-container');
+            if (resultContainer) {
+                resultContainer.style.display = 'block';
+                resultContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        } else {
+            console.error('Invalid response data:', data);
+            alert("Error generating case. Please try again.");
+        }
+    })
+    .catch(error => {
+        console.error('Error during generate case fetch:', error);
+        generateButton.innerHTML = 'Generate Case';
+        generateButton.disabled = false;
+        alert("An error occurred. Please try again.");
+    });
+});
+
+// Play generated case functionality: redirect to the generated URL
+document.getElementById('play-generated-case').addEventListener('click', function() {
+    if (window.generatedCaseUrl) {
+        // Navigate to the generated URL so the user plays that case
+        window.location.href = window.generatedCaseUrl;
+    } else {
+        alert('Please generate a case first.');
+    }
+});
 
   // Add this CSS for the loading spinner
   document.head.insertAdjacentHTML('beforeend', `

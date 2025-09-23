@@ -571,6 +571,10 @@ sup {
   width: 100%;
 }
 
+#play-generated-case {
+  width: 100%;
+}
+
 #result-container {
   animation: fadeScale 0.5s ease-out;
   margin-top: 25px;

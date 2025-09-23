@@ -160,6 +160,7 @@ def generate_case_by_criteria():
 
         # Generate disease using AI based on criteria
         disease = select_disease_by_criteria(chief_complaint, specialty)
+        logging.info(f"AI selected disease: {disease}")
 
         if not disease:
             return jsonify({"error": "Failed to generate a disease based on criteria"}), 500
@@ -172,6 +173,7 @@ def generate_case_by_criteria():
         return jsonify({
             "message": "Case generated successfully using AI",
             "disease": disease,
+            "url": f"www.diagnoseme.io/case/{urllib.parse.quote(encode_case_data(disease, encrypt=True))}",
             "criteria_used": {
                 "chief_complaint": chief_complaint if chief_complaint else None,
                 "specialty": specialty if specialty else None

@@ -255,11 +255,12 @@
                 <div class="modal-icon-container">
                     <span class="modal-icon">🎲</span>
                 </div>
-                <h2>Play a randomly generated case</h2>
-                <p class="modal-subtitle">Generate a unique case based on your preferences, and then play it.</p>
+                <h2>Play a random case</h2>
+                <p class="modal-subtitle">Play a unique case based on your preferences.</p>
             </div>
             <div class="modal-body">
-                <p>Leave fields blank for a completely random case, or specify preferences to guide the AI generation.</p>
+                <p>Leave fields blank for a completely random case, or specify preferences.</p>
+                <p>(Case generation may take a while.)</p>
                 <div class="input-group">
                     <label for="chief-complaint">Chief Complaint (Optional)</label>
                     <input type="text" id="chief-complaint" class="modal-input" placeholder="e.g. chest pain, shortness of breath, abdominal pain...">
@@ -292,16 +293,10 @@
                 </div>
                 <button id="generate-case-btn" class="btn btn--primary">Generate Case</button>
                 
+                <!-- Show this only after a URL is generated -->
                 <div id="generate-result-container" style="display: none;">
-                    <div class="success-animation">
-                        <div class="checkmark-circle">
-                            <div class="checkmark draw"></div>
-                        </div>
-                    </div>
                     <div class="divider divider--success"><span>Case generated successfully.</span></div>
-                    <div class="result-box">
                         <button id="play-generated-case" class="btn btn--primary">Play the case</button>
-                    </div>
                 </div>
             </div>
         </div>

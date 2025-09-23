@@ -29,32 +29,38 @@ def select_disease_by_criteria(chief_complaint, specialty):
 
         if chief_complaint and specialty:
             prompt = (
-                f"Generate a single medical disease/condition that would present with '{chief_complaint}' "
+                f"Generate a single medical disease/condition that would present with or as '{chief_complaint}' "
                 f"and would typically be managed by {specialty}. "
                 f"Return only the disease name, nothing else. "
                 f"Make it a realistic, well-known condition that medical students should learn about. "
-                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
+                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
+                f"Return only the disease name, nothing else."
             )
         elif chief_complaint:
             prompt = (
                 f"Generate a single medical disease/condition that would typically present with '{chief_complaint}'. "
                 f"Return only the disease name, nothing else. "
-                f"Make it a realistic, well-known condition that medical students should learn about. "
-                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
+                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
+                f"Return only the disease name, nothing else."
             )
         elif specialty:
             prompt = (
-                f"Generate a single medical disease/condition that would typically be managed by {specialty}. "
+                f"Generate a single medical disease/condition that would typically be seen by {specialty}. "
                 f"Return only the disease name, nothing else. "
-                f"Make it a realistic, well-known condition that medical students should learn about. "
-                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
+                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
+                f"Return only the disease name, nothing else."
             )
         else:
             prompt = (
                 f"Generate a single medical disease/condition that would be appropriate for medical student learning. "
                 f"Return only the disease name, nothing else. "
                 f"Make it a realistic, well-known condition from any medical specialty. "
-                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
+                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
+                f"Return only the disease name, nothing else."
             )
 
         # Import here to avoid circular imports
