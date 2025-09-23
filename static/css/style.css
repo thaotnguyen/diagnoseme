@@ -237,7 +237,8 @@ sup {
 }
 
 /* Match textarea styling */
-.modal-select {
+.modal-select,
+.modal-input {
   width: 100%;
   padding: 12px;
   border: 1px solid #ddd;
@@ -249,7 +250,8 @@ sup {
   background-color: #fff;
 }
 
-.modal-select:focus {
+.modal-select:focus,
+.modal-input:focus {
   border-color: var(--imessage-blue);
   outline: none;
   box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
@@ -557,7 +559,18 @@ sup {
   font-style: italic;
 }
 
-/* Result Container Styles - Enhanced */
+.generated-case-info {
+  margin: 10px 0;
+  color: #666;
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+
+#generate-case-btn {
+  margin-top: 15px;
+  width: 100%;
+}
+
 #result-container {
   animation: fadeScale 0.5s ease-out;
   margin-top: 25px;
@@ -916,13 +929,13 @@ ol {
 
   #send-button {
     padding: 6px 8px; /* Further adjust button padding */
-    font-size: 1.15em;
+    margin: 0 0 5px 5px;
   }
 
   #input-area {
-    flex-direction: column; /* Stack input area elements vertically */
+    flex-direction: row; /* Stack input area elements vertically */
     margin-top: 5px; /* Reduce margin */
-    height: 77px;
+    height: 32px;
     padding-bottom: env(
       safe-area-inset-bottom
     ); /* Add space for mobile bottom bar */
@@ -931,7 +944,6 @@ ol {
   #user-input {
     margin-bottom: 5px; /* Space between input and button */
     margin-right: 0;
-    font-size: 1.15em;
   }
 }
 

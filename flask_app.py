@@ -6,7 +6,7 @@ import os
 import boto3
 import uuid
 from boto3.dynamodb.conditions import Key, Attr
-from disease_selector import select_random_disease  # Import the new function
+from disease_selector import select_random_disease, select_disease_by_criteria  # Import the new function
 from flask_cors import CORS
 # Importing the new function
 # Import Google Generative AI library
@@ -143,6 +143,50 @@ def new_random_case():
     except Exception as e:
         logging.error(f"Error generating new random case: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate new case: {str(e)}"}), 500
+
+
+@app.route('/generate_case_by_criteria', methods=['POST'])
+def generate_case_by_criteria():
+    """Generate a case using AI based on optional chief complaint and specialty criteria."""
+    try:
+        data = request.get_json() or {}
+        chief_complaint = data.get('chief_complaint', '').strip()
+        specialty = data.get('specialty', '').strip()
+        
+        # Both fields are now optional
+        logging.info(f"Generating AI case with criteria - Chief complaint: '{chief_complaint}', Specialty: '{specialty}'")
+        
+        # Generate disease using AI based on criteria
+        disease = select_disease_by_criteria(chief_complaint, specialty)
+        
+        if not disease:
+            return jsonify({"error": "Failed to generate a disease based on criteria"}), 500
+            
+        # Generate patient case
+        patient_case = generate_patient_case(disease)
+        placeholder_snippet = build_placeholder_snippet(patient_case, disease)
+        
+        # Return the case details
+        return jsonify({
+            "message": "Case generated successfully using AI",
+            "disease": disease,
+            "criteria_used": {
+                "chief_complaint": chief_complaint if chief_complaint else None,
+                "specialty": specialty if specialty else None
+            },
+            "patient_context": {
+                "case": patient_case,
+                "disease": disease,
+                "attempts": 2,
+                "completed": False,
+                "history": [],
+                "placeholder_snippet": placeholder_snippet
+            }
+        })
+        
+    except Exception as e:
+        logging.error(f"Error generating AI case by criteria: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to generate case: {str(e)}"}), 500
 
 # Modify save_conversation to ensure unique sessions
 
@@ -711,7 +755,6 @@ def get_clinical_feedback(patient_context):
         f"Provide brief, congratulatory feedback on their performance. "
         f"Mention one thing they did well. "
         f"Comment on one area for improvement. For example (not limited to these): Did they ask questions indicating that they closed prematurely? Did they ask for all red flag symptoms correctly? Did they prematurely jump to labs? Did they show empathy?"
-        f"Remember to note red flag serious acute pathologies with a similar chief complaint, and make sure that the user ruled them out properly."
         f"Remember to keep your feedback constructive and focused on the student's performance."
         f"Bold especially salient points."
         f"Only reference things that happened in the transcript, except previous incorrect diagnoses — just ignore those."

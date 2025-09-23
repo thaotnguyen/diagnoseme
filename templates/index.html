@@ -101,6 +101,7 @@
                 <div class="actions-section">
                     <button id="view-instructions-icon" class="header-button" title="Instructions">📖</button>
                     <button id="create-case-icon" class="header-button" title="Create Case">📝</button>
+                    <button id="generate-case-icon" class="header-button" title="Generate Case">🎲</button>
                     <button id="view-leaderboard-icon" class="header-button" title="Leaderboard">🏆</button>
                     <button id="clear-history-button" class="header-button clear-button" title="Clear History">🔄</button>
                 </div>
@@ -242,6 +243,64 @@
                             </div>
                         </div>
                         <p class="share-tip">Share this URL with others to let them try solving your case!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="generate-case-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header modal-header--blue">
+                <span id="close-generate-case-modal" class="close">&times;</span>
+                <div class="modal-icon-container">
+                    <span class="modal-icon">🎲</span>
+                </div>
+                <h2>Play a randomly generated case</h2>
+                <p class="modal-subtitle">Generate a unique case based on your preferences, and then play it.</p>
+            </div>
+            <div class="modal-body">
+                <p>Leave fields blank for a completely random case, or specify preferences to guide the AI generation.</p>
+                <div class="input-group">
+                    <label for="chief-complaint">Chief Complaint (Optional)</label>
+                    <input type="text" id="chief-complaint" class="modal-input" placeholder="e.g. chest pain, shortness of breath, abdominal pain...">
+                </div>
+                <div class="input-group">
+                    <label for="specialty">Specialty (Optional)</label>
+                    <select id="specialty" class="modal-select">
+                        <option value="">Select a specialty...</option>
+                        <option value="cardiology">Cardiology</option>
+                        <option value="pulmonology">Pulmonology</option>
+                        <option value="gastroenterology">Gastroenterology</option>
+                        <option value="neurology">Neurology</option>
+                        <option value="endocrinology">Endocrinology</option>
+                        <option value="hematology">Hematology</option>
+                        <option value="oncology">Oncology</option>
+                        <option value="rheumatology">Rheumatology</option>
+                        <option value="nephrology">Nephrology</option>
+                        <option value="infectious-disease">Infectious Disease</option>
+                        <option value="psychiatry">Psychiatry</option>
+                        <option value="pediatrics">Pediatrics</option>
+                        <option value="emergency-medicine">Emergency Medicine</option>
+                        <option value="internal-medicine">Internal Medicine</option>
+                        <option value="surgery">Surgery</option>
+                        <option value="orthopedics">Orthopedics</option>
+                        <option value="dermatology">Dermatology</option>
+                        <option value="ophthalmology">Ophthalmology</option>
+                        <option value="otolaryngology">Otolaryngology</option>
+                        <option value="obstetrics-gynecology">Obstetrics & Gynecology</option>
+                    </select>
+                </div>
+                <button id="generate-case-btn" class="btn btn--primary">Generate Case</button>
+                
+                <div id="generate-result-container" style="display: none;">
+                    <div class="success-animation">
+                        <div class="checkmark-circle">
+                            <div class="checkmark draw"></div>
+                        </div>
+                    </div>
+                    <div class="divider divider--success"><span>Case generated successfully.</span></div>
+                    <div class="result-box">
+                        <button id="play-generated-case" class="btn btn--primary">Play the case</button>
                     </div>
                 </div>
             </div>

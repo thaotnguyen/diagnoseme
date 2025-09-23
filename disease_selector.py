@@ -21,6 +21,82 @@ def select_random_disease(case_of_the_day=True):
         return None
 
 
+def select_disease_by_criteria(chief_complaint, specialty):
+    """Generate a disease using AI based on chief complaint and specialty criteria."""
+    try:
+        # Build the prompt for AI disease generation
+        prompt_parts = []
+
+        if chief_complaint and specialty:
+            prompt = (
+                f"Generate a single medical disease/condition that would present with '{chief_complaint}' "
+                f"and would typically be managed by {specialty}. "
+                f"Return only the disease name, nothing else. "
+                f"Make it a realistic, well-known condition that medical students should learn about. "
+                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+            )
+        elif chief_complaint:
+            prompt = (
+                f"Generate a single medical disease/condition that would typically present with '{chief_complaint}'. "
+                f"Return only the disease name, nothing else. "
+                f"Make it a realistic, well-known condition that medical students should learn about. "
+                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+            )
+        elif specialty:
+            prompt = (
+                f"Generate a single medical disease/condition that would typically be managed by {specialty}. "
+                f"Return only the disease name, nothing else. "
+                f"Make it a realistic, well-known condition that medical students should learn about. "
+                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+            )
+        else:
+            prompt = (
+                f"Generate a single medical disease/condition that would be appropriate for medical student learning. "
+                f"Return only the disease name, nothing else. "
+                f"Make it a realistic, well-known condition from any medical specialty. "
+                f"Examples of good responses: 'Acute myocardial infarction', 'Pneumonia', 'Diabetes mellitus type 1'"
+            )
+
+        # Import here to avoid circular imports
+        import google.generativeai as genai
+        import os
+        from dotenv import load_dotenv
+
+        # Load environment variables
+        project_folder = os.path.expanduser('~/Development/diagnoseme')
+        load_dotenv(os.path.join(project_folder, '.env'))
+
+        # Configure Gemini API
+        API_KEY = os.getenv('GOOGLE_API_KEY')
+        if not API_KEY:
+            logging.error("Google API key not found")
+            return random.choice(DISEASES)
+
+        genai.configure(api_key=API_KEY)
+        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+
+        # Generate the disease
+        response = model.generate_content(prompt)
+        generated_disease = response.text.strip()
+
+        # Clean up the response (remove quotes, extra text, etc.)
+        generated_disease = generated_disease.strip('"').strip("'").strip()
+
+        # Validate the response is reasonable
+        if len(generated_disease) > 100 or len(generated_disease.split()) > 8:
+            logging.warning(
+                "Generated disease name seems too long, using fallback")
+            return random.choice(DISEASES)
+
+        logging.info(f"AI generated disease: {generated_disease}")
+        return generated_disease
+
+    except Exception as e:
+        logging.error(f"Error generating disease with AI: {e}", exc_info=True)
+        # Fallback to random selection from existing list
+        return random.choice(DISEASES)
+
+
 # List of diseases from the USMLE Step 1 and 2 curriculum
 DISEASES = [
     "Rheumatic fever",
