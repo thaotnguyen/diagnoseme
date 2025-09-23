@@ -173,7 +173,7 @@ def generate_case_by_criteria():
         return jsonify({
             "message": "Case generated successfully using AI",
             "disease": disease,
-            "url": f"{urllib.parse.quote(encode_case_data(disease, encrypt=True))}",
+            "url": f"case/{urllib.parse.quote(encode_case_data(disease, encrypt=True))}",
             "criteria_used": {
                 "chief_complaint": chief_complaint if chief_complaint else None,
                 "specialty": specialty if specialty else None
