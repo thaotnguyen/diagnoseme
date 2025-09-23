@@ -6,7 +6,8 @@ import os
 import boto3
 import uuid
 from boto3.dynamodb.conditions import Key, Attr
-from disease_selector import select_random_disease, select_disease_by_criteria  # Import the new function
+# Import the new function
+from disease_selector import select_random_disease, select_disease_by_criteria
 from flask_cors import CORS
 # Importing the new function
 # Import Google Generative AI library
@@ -152,20 +153,21 @@ def generate_case_by_criteria():
         data = request.get_json() or {}
         chief_complaint = data.get('chief_complaint', '').strip()
         specialty = data.get('specialty', '').strip()
-        
+
         # Both fields are now optional
-        logging.info(f"Generating AI case with criteria - Chief complaint: '{chief_complaint}', Specialty: '{specialty}'")
-        
+        logging.info(
+            f"Generating AI case with criteria - Chief complaint: '{chief_complaint}', Specialty: '{specialty}'")
+
         # Generate disease using AI based on criteria
         disease = select_disease_by_criteria(chief_complaint, specialty)
-        
+
         if not disease:
             return jsonify({"error": "Failed to generate a disease based on criteria"}), 500
-            
+
         # Generate patient case
         patient_case = generate_patient_case(disease)
         placeholder_snippet = build_placeholder_snippet(patient_case, disease)
-        
+
         # Return the case details
         return jsonify({
             "message": "Case generated successfully using AI",
@@ -183,9 +185,10 @@ def generate_case_by_criteria():
                 "placeholder_snippet": placeholder_snippet
             }
         })
-        
+
     except Exception as e:
-        logging.error(f"Error generating AI case by criteria: {e}", exc_info=True)
+        logging.error(
+            f"Error generating AI case by criteria: {e}", exc_info=True)
         return jsonify({"error": f"Failed to generate case: {str(e)}"}), 500
 
 # Modify save_conversation to ensure unique sessions
@@ -768,7 +771,7 @@ def get_llm_diagnosis_match(user_diagnosis, correct_diagnosis):
     prompt = (
         f"In a roleplay simulation game, a patient has '{correct_diagnosis}'. "
         f"A user, trying to guess the diagnosis, has said '{user_diagnosis}'. "
-        f"Is the condition that the user is referring to the same as, or more specific than, the patient's condition? "
+        f"Is the condition that the user is referring to the same as, or more specific than, the patient's condition? Make sure your answer is case insensitive. "
         f"Answer only 'yes', 'no', or 'partially', with no elaboration or explanation."
     )
     response = call_llm_api(prompt, streaming=False,

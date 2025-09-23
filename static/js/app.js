@@ -133,13 +133,23 @@ document.addEventListener('DOMContentLoaded', function () {
         userInput.disabled = false;
         sendButton.disabled = false;
         sendButton.classList.remove('disabled');
+      } else {
+        // NEW: Replace input area with "Play a random case" button
+        const inputArea = document.getElementById('input-area');
+        const textBox = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const newRandomCaseButton = document.getElementById('play-random-case');
+        if (inputArea) {
+            
+            // Replace with the new play button
+            textBox.style.display = 'none';
+            sendButton.style.display = 'none';
+            newRandomCaseButton.style.display = 'inline-block';
+            
+            // Add event listener to the new button
+            newRandomCaseButton.addEventListener('click', startRandomCase);
+        }
       }
-      //  else {
-      //   // Disable user input if the game is completed
-      //   userInput.disabled = true;
-      //   sendButton.disabled = true;
-      //   sendButton.classList.add('disabled');
-      // }
 
       // Load saved chat history
       loadChatHistory();
