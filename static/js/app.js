@@ -1455,12 +1455,13 @@ document.getElementById('play-generated-case').addEventListener('click', functio
               text-align: center;
               text-decoration: none;
               display: block;
-              font-size: 16px;
-              margin: 10px auto;
+              font-size: 1em;
               cursor: pointer;
               border-radius: 8px;
               transition: background-color 0.3s;
+              margin: 3px auto 0 auto;
               width: 100%;
+              height: 100%;
               max-width: 300px;
           }
           

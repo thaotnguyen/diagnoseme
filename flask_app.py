@@ -706,6 +706,7 @@ def ask_patient_question(question, patient_context):
         f"roleplay as the patient's parent or caretaker instead. Don't give away too much info."
         f"Only answer the question asked, and don't reveal the diagnosis. If you reveal the diagnosis, you will be terminated."
         f"Do not give away too many different symptoms in your message. Be vague. The user should work to get additional symptoms."
+        f"Avoid giving multiple symptoms in one response."
     )
     return call_llm_api(prompt, streaming=True, log_prefix="High Yield Question")
 
@@ -840,6 +841,8 @@ def too_broad_physical_exam(question, patient_context):
         f"The user has just asked you the following question: {question}. "
         f"Let them know that their request for a physical exam is too broad or vague. "
         f"Encourage them to be more specific about which part of the physical exam they would like to perform."
+        f"Do not allude to anything else, like information that only you have."
+        f"Simply tell them to be more specific about which part of the physical exam they want."
         f"Do not be condescending or rude. Be kind and educational."
         f"Output only the feedback."
     )

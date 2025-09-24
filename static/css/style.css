@@ -889,7 +889,7 @@ ol {
 
   #chat-box {
     padding: 0 5px; /* Reduce padding for chat box */
-    max-height: calc(var(--vh, 1vh) * 100 - 52px - 77px - 10px);
+    max-height: calc(var(--vh, 1vh) * 100 - 52px - 42px - 10px);
   }
 
   .message {
@@ -934,12 +934,14 @@ ol {
   #send-button {
     padding: 6px 8px; /* Further adjust button padding */
     margin: 0 0 5px 5px;
+    font-size: 0.9em;
   }
 
   #input-area {
     flex-direction: row; /* Stack input area elements vertically */
     margin-top: 5px; /* Reduce margin */
-    height: 32px;
+    height: 42px;
+    z-index: 999;
     padding-bottom: env(
       safe-area-inset-bottom
     ); /* Add space for mobile bottom bar */
@@ -948,6 +950,7 @@ ol {
   #user-input {
     margin-bottom: 5px; /* Space between input and button */
     margin-right: 0;
+    font-size: 1em;
   }
 }
 
