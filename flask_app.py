@@ -706,7 +706,7 @@ def ask_patient_question(question, patient_context):
         f"roleplay as the patient's parent or caretaker instead. Don't give away too much info."
         f"Only answer the question asked, and don't reveal the diagnosis. If you reveal the diagnosis, you will be terminated."
         f"Do not give away too many different symptoms in your message. Be vague. The user should work to get additional symptoms."
-        f"Avoid giving multiple symptoms in one response."
+        f"Avoid talking about multiple symptoms in one response."
     )
     return call_llm_api(prompt, streaming=True, log_prefix="High Yield Question")
 
