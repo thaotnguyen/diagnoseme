@@ -22,50 +22,40 @@ def select_random_disease(case_of_the_day=True):
 
 
 def select_disease_by_criteria(chief_complaint, specialty):
-    """Generate a disease using AI based on chief complaint and specialty criteria."""
+    """Generate a disease list via AI that meets criteria, then randomly pick one."""
     try:
-        # Build the prompt for AI disease generation
-        prompt_parts = []
+        # Build prompt that asks for a list with strict output format
+        criteria_lines = []
+        if chief_complaint:
+            criteria_lines.append(f"Presents with: '{chief_complaint}'.")
+        if specialty:
+            criteria_lines.append(f"Typically managed by: {specialty}.")
 
-        if chief_complaint and specialty:
-            prompt = (
-                f"Generate a single medical disease/condition that would present with or as '{chief_complaint}' "
-                f"and would typically be managed by {specialty}. "
-                f"Return only the disease name, nothing else. "
-                f"Make it a realistic, well-known condition that medical students should learn about. "
-                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
-                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
-                f"Return only the disease name, nothing else."
-            )
-        elif chief_complaint:
-            prompt = (
-                f"Generate a single medical disease/condition that would typically present with '{chief_complaint}'. "
-                f"Return only the disease name, nothing else. "
-                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
-                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
-                f"Return only the disease name, nothing else."
-            )
-        elif specialty:
-            prompt = (
-                f"Generate a single medical disease/condition that would typically be seen by {specialty}. "
-                f"Return only the disease name, nothing else. "
-                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
-                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
-                f"Return only the disease name, nothing else."
-            )
-        else:
-            prompt = (
-                f"Generate a single medical disease/condition that would be appropriate for medical student learning. "
-                f"Return only the disease name, nothing else. "
-                f"Make it a realistic, well-known condition from any medical specialty. "
-                f"It should be a disease that is tested on the USMLE Step 1 or Step 2 exam. "
-                f"Pick something not too obscure, but also not too common. It should be something that a medical student would think is nontrivial to diagnose, something that is a fun challenge."
-                f"Return only the disease name, nothing else."
-            )
+        criteria_text = "\n".join(
+            f"- {line}" for line in criteria_lines) if criteria_lines else "- Appropriate for medical student learning."
+
+        prompt = (
+            "Return a newline-separated list of high-yield distinct medical diseases/conditions that meet ALL of the following:\n"
+            "- Tested on USMLE Step 1 or Step 2.\n"
+            "- Realistic, well-known."
+            "Criteria:\n"
+            f"{criteria_text}\n\n"
+            "Output format rules (must follow exactly):\n"
+            "- Output ONLY the disease names.\n"
+            "- One disease per line.\n"
+            "- No numbering, no bullets, no extra text, no explanations.\n"
+            "- No quotes. Avoid parenthetical clarifications.\n"
+            "- No duplicates.\n\n"
+            "Example format:\n"
+            "Myasthenia gravis\n"
+            "Guillain-Barré syndrome\n"
+            "Sarcoidosis"
+        )
 
         # Import here to avoid circular imports
         import google.generativeai as genai
         import os
+        import re
         from dotenv import load_dotenv
 
         # Load environment variables
@@ -81,24 +71,55 @@ def select_disease_by_criteria(chief_complaint, specialty):
         genai.configure(api_key=API_KEY)
         model = genai.GenerativeModel('gemini-2.5-flash-lite')
 
-        # Generate the disease
+        # Generate the list
         response = model.generate_content(prompt)
-        generated_disease = response.text.strip()
-
-        # Clean up the response (remove quotes, extra text, etc.)
-        generated_disease = generated_disease.strip('"').strip("'").strip()
-
-        # Validate the response is reasonable
-        if len(generated_disease) > 100 or len(generated_disease.split()) > 8:
-            logging.warning(
-                "Generated disease name seems too long, using fallback")
+        raw_text = (getattr(response, "text", None) or "").strip()
+        if not raw_text:
+            logging.warning("Empty AI response; using fallback")
             return random.choice(DISEASES)
 
-        logging.info(f"AI generated disease: {generated_disease}")
-        return generated_disease
+        # Parse newline-delimited diseases
+        lines = [ln.strip() for ln in raw_text.splitlines() if ln.strip()]
+
+        # Cleanup each line: remove leading bullets/numbering if any slipped in, quotes, and parenthetical tails
+        cleaned = []
+        for ln in lines:
+            # remove leading bullets/numbering like "1) ", "1. ", "- ", "* ", "• "
+            ln = re.sub(r'^\s*(?:[-*•]|\d+[.)])\s*', '', ln)
+            # strip surrounding quotes
+            ln = ln.strip().strip('"').strip("'")
+            # drop parenthetical clarifications at end
+            ln = re.sub(r'\s*\([^)]*\)\s*$', '', ln).strip()
+            # sanity checks
+            if not ln:
+                continue
+            if len(ln) > 100 or len(ln.split()) > 8:
+                continue
+            cleaned.append(ln)
+
+        # Deduplicate while preserving order
+        seen = set()
+        candidates = []
+        for d in cleaned:
+            if d.lower() in seen:
+                continue
+            seen.add(d.lower())
+            candidates.append(d)
+
+        # If AI list is too small, fall back
+        if len(candidates) < 5:
+            logging.warning(
+                "AI produced too few valid candidates; using fallback list")
+            return random.choice(DISEASES)
+
+        # Pick randomly from AI-generated list
+        choice = random.choice(candidates)
+        logging.info("AI-generated candidate count: %d; selected: %s",
+                     len(candidates), choice)
+        return choice
 
     except Exception as e:
-        logging.error(f"Error generating disease with AI: {e}", exc_info=True)
+        logging.error("Error generating disease with AI: %s", e, exc_info=True)
         # Fallback to random selection from existing list
         return random.choice(DISEASES)
 
