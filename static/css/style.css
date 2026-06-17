@@ -837,6 +837,7 @@ ol {
   color: black; /* Text color */
   align-self: flex-start; /* Align LLM messages to the left */
   font-family: Arial, sans-serif; /* Add this line for sans-serif font */
+  line-break: normal;
 }
 
 #input-area {

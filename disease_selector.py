@@ -62,14 +62,13 @@ def select_disease_by_criteria(chief_complaint, specialty):
         project_folder = os.path.expanduser('~/Development/diagnoseme')
         load_dotenv(os.path.join(project_folder, '.env'))
 
-        # Configure Gemini API
         API_KEY = os.getenv('GOOGLE_API_KEY')
         if not API_KEY:
             logging.error("Google API key not found")
             return random.choice(DISEASES)
 
         genai.configure(api_key=API_KEY)
-        model = genai.GenerativeModel('gemini-2.5-flash-lite')
+        model = genai.GenerativeModel('gemini-3-flash-preview')
 
         # Generate the list
         response = model.generate_content(prompt)

@@ -340,7 +340,9 @@ document.addEventListener('DOMContentLoaded', function () {
               history: [],
               disease: data.patient_context.disease,
               case: data.patient_context.case,
-              placeholder_snippet: data.patient_context.placeholder_snippet
+              placeholder_snippet: data.patient_context.placeholder_snippet,
+              rubric: data.patient_context.rubric,
+              case_key: data.patient_context.case_key
           };
 
           localStorage.setItem('patientContext', JSON.stringify(window.patientContext));
@@ -780,6 +782,8 @@ const playerRoleSelect = document.getElementById('player-role-select');
       history: [],
       disease: preloadedGameData.patient_context.disease,
       case: preloadedGameData.patient_context.case,
+      rubric: preloadedGameData.patient_context.rubric,
+      case_key: preloadedGameData.patient_context.case_key,
     };
 
     // Reset timer display but don't start it
@@ -1182,6 +1186,8 @@ const playerRoleSelect = document.getElementById('player-role-select');
                   history: history,
                   disease: window.patientContext.disease,
                   case: window.patientContext.case,
+                  rubric: window.patientContext.rubric,
+                  case_key: window.patientContext.case_key,
               };
 
               window.patientContext = patientContext; // Update patient context
@@ -1868,4 +1874,3 @@ document.getElementById('view-instructions').addEventListener('click', function(
   // Set source flag for return navigation
   instructionsModalSource = 'start';
 });
-

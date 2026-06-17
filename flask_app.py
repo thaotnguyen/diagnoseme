@@ -1,16 +1,14 @@
-from MedRAG.src.medrag import MedRAG
 from flask import Flask, render_template, request, jsonify, session, Response, stream_with_context
 import logging
 import json
 import os
 import boto3
 import uuid
+from liquid import Template
 from boto3.dynamodb.conditions import Key, Attr
 # Import the new function
 from disease_selector import select_random_disease, select_disease_by_criteria
 from flask_cors import CORS
-# Importing the new function
-# Import Google Generative AI library
 import google.generativeai as genai
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
@@ -25,10 +23,8 @@ load_dotenv(os.path.join(project_folder, '.env'))
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-# API key for Gemini
 API_KEY = os.getenv('GOOGLE_API_KEY')
 
-# Configure the Gemini API
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-3.5-flash')
 advanced_model = genai.GenerativeModel('gemini-3.5-flash')
@@ -41,6 +37,7 @@ dynamodb = boto3.client('dynamodb')
 
 CONVERSATIONS_TABLE = os.getenv(
     'CONVERSATIONS_TABLE', 'diagnosemeconversations')
+CASES_TABLE = os.getenv('CASES_TABLE', 'diagnosemecases')
 
 
 @app.before_request
@@ -124,7 +121,8 @@ def new_random_case():
         logging.info(f"Selected new random disease: {disease}")
 
         # Generate patient case
-        patient_case = generate_patient_case(disease)
+        case_record = get_patient_case_record(disease)
+        patient_case = case_record['case']
 
         # Build placeholder snippet
         placeholder_snippet = build_placeholder_snippet(patient_case, disease)
@@ -138,7 +136,9 @@ def new_random_case():
                 "attempts": 2,
                 "completed": False,
                 "history": [],
-                "placeholder_snippet": placeholder_snippet
+                "placeholder_snippet": placeholder_snippet,
+                "rubric": case_record['rubric'],
+                "case_key": case_record['case_key']
             }
         })
     except Exception as e:
@@ -166,7 +166,8 @@ def generate_case_by_criteria():
             return jsonify({"error": "Failed to generate a disease based on criteria"}), 500
 
         # Generate patient case
-        patient_case = generate_patient_case(disease)
+        case_record = get_patient_case_record(disease)
+        patient_case = case_record['case']
         placeholder_snippet = build_placeholder_snippet(patient_case, disease)
 
         # Return the case details
@@ -184,7 +185,9 @@ def generate_case_by_criteria():
                 "attempts": 2,
                 "completed": False,
                 "history": [],
-                "placeholder_snippet": placeholder_snippet
+                "placeholder_snippet": placeholder_snippet,
+                "rubric": case_record['rubric'],
+                "case_key": case_record['case_key']
             }
         })
 
@@ -261,18 +264,112 @@ def save_conversation():
         return jsonify({'ok': False, 'error': str(e)}), 500
 
 
-def generate_patient_case(disease, case_details=None):
-    """Generate a complete patient case for a given disease."""
-    logging.info("Generating patient case for disease: %s", disease)
-
+def get_case_key(disease, case_details=None):
     if case_details:
-        encoded_case_data = encode_case_data(
-            disease, case_details, encrypt=False)
-    else:
-        encoded_case_data = encode_case_data(disease, encrypt=False)
+        return encode_case_data(disease, case_details, encrypt=False)
+    return encode_case_data(disease, encrypt=False)
+
+
+def fallback_case_rubric(disease):
+    return {
+        "disease": disease,
+        "key_history": [
+            "Elicit the chief concern, symptom timeline, associated symptoms, relevant risk factors, and pertinent negatives."
+        ],
+        "key_physical_exam": [
+            "Request focused exam findings that help distinguish the likely diagnosis from close alternatives."
+        ],
+        "key_tests": [
+            "Order targeted labs or imaging only when they would reasonably affect diagnostic confidence."
+        ],
+        "diagnostic_reasoning": [
+            "Use the case findings to name the most likely diagnosis and avoid premature closure."
+        ],
+        "common_pitfalls": [
+            "Guessing before gathering enough discriminating information or requesting overly broad exams/tests."
+        ],
+        "performance_levels": {
+            "excellent": "Focused, efficient questioning and testing that identifies discriminating findings before diagnosing.",
+            "adequate": "Reaches the diagnosis with some relevant information but misses important supporting or excluding features.",
+            "weak": "Relies on broad requests, unsupported guesses, or misses the main diagnostic clues."
+        }
+    }
+
+
+def parse_json_object(text):
+    if not text:
+        raise ValueError("Empty JSON response")
+
+    cleaned = text.strip()
+    if cleaned.startswith("```"):
+        cleaned = cleaned.strip("`").strip()
+        if cleaned.lower().startswith("json"):
+            cleaned = cleaned[4:].strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find('{')
+        end = cleaned.rfind('}')
+        if start == -1 or end == -1 or end <= start:
+            raise
+        return json.loads(cleaned[start:end + 1])
+
+
+def generate_case_rubric(disease, case_text):
+    """Generate a structured performance rubric for a case."""
+    prompt = (
+        "You are an expert medical educator creating a rubric for a diagnostic reasoning game.\n\n"
+        f"Correct diagnosis: {disease}\n\n"
+        f"Full case record:\n{case_text}\n\n"
+        "Create a concise rubric for what good performance in this specific case looks like. "
+        "Focus on observable player behavior in the encounter, not generic facts about the disease. "
+        "Return ONLY valid JSON with this exact shape:\n"
+        "{\n"
+        '  "disease": "string",\n'
+        '  "key_history": ["string"],\n'
+        '  "key_physical_exam": ["string"],\n'
+        '  "key_tests": ["string"],\n'
+        '  "diagnostic_reasoning": ["string"],\n'
+        '  "common_pitfalls": ["string"],\n'
+        '  "performance_levels": {\n'
+        '    "excellent": "string",\n'
+        '    "adequate": "string",\n'
+        '    "weak": "string"\n'
+        "  }\n"
+        "}\n"
+    )
+    response = call_llm_api(prompt, streaming=False,
+                            log_prefix="Generate Case Rubric", advanced=True)
+    try:
+        rubric = parse_json_object(response)
+        if not isinstance(rubric, dict):
+            raise ValueError("Rubric response was not a JSON object")
+        return rubric
+    except Exception as e:
+        logging.error("Failed to parse generated rubric: %s", e, exc_info=True)
+        return fallback_case_rubric(disease)
+
+
+def generate_medical_case(disease, case_details=None):
+    template_path = os.path.join(
+        os.path.dirname(__file__), "MedRAG/templates/medical_case.jinja")
+    with open(template_path, "r") as f:
+        case_template = Template(f.read())
+
+    prompt = case_template.render(
+        disease=disease, case_details=case_details)
+    return call_llm_api(prompt, streaming=False,
+                        log_prefix="Generate Medical Case", advanced=True)
+
+
+def get_patient_case_record(disease, case_details=None):
+    """Return case text, rubric, and storage key, creating/backfilling as needed."""
+    logging.info("Loading patient case record for disease: %s", disease)
+    encoded_case_data = get_case_key(disease, case_details)
 
     case = dynamodb.query(
-        TableName='diagnosemecases',
+        TableName=CASES_TABLE,
         KeyConditionExpression='gamecase = :c',
         ExpressionAttributeValues={':c': {'S': encoded_case_data}}
     )
@@ -282,17 +379,71 @@ def generate_patient_case(disease, case_details=None):
                         retriever_name="MedCPT", corpus_name="MedText", corpus_cache=True)
         new_case = medrag.generate_medical_case(disease, case_details)
         dynamodb.put_item(
-            TableName='diagnosemecases',
+            TableName=CASES_TABLE,
             Item={
                 'gamecase': {'S': encoded_case_data},
                 'gamerecord': {'S': new_case},
+                'gamerubric': {'S': rubric_json},
+                'rubric_updated_at': {'S': datetime.utcnow().isoformat()},
             }
         )
         print("New case generated and stored in DynamoDB.")
-        return new_case
+        return {
+            'case': new_case,
+            'rubric': rubric,
+            'case_key': encoded_case_data,
+        }
     else:
         print("Case already exists in DynamoDB")
-        return case['Items'][0]['gamerecord']['S']
+        item = case['Items'][0]
+        case_text = item['gamerecord']['S']
+        rubric_json = item.get('gamerubric', {}).get('S')
+
+        if rubric_json:
+            try:
+                rubric = json.loads(rubric_json)
+            except json.JSONDecodeError:
+                logging.warning("Stored rubric was invalid JSON; regenerating.")
+                rubric = generate_case_rubric(disease, case_text)
+                rubric_json = json.dumps(rubric)
+                dynamodb.update_item(
+                    TableName=CASES_TABLE,
+                    Key={'gamecase': {'S': encoded_case_data}},
+                    UpdateExpression=(
+                        "SET gamerubric = :rubric, rubric_updated_at = :now"
+                    ),
+                    ExpressionAttributeValues={
+                        ':rubric': {'S': rubric_json},
+                        ':now': {'S': datetime.utcnow().isoformat()},
+                    },
+                    ReturnValues='NONE'
+                )
+        else:
+            rubric = generate_case_rubric(disease, case_text)
+            rubric_json = json.dumps(rubric)
+            dynamodb.update_item(
+                TableName=CASES_TABLE,
+                Key={'gamecase': {'S': encoded_case_data}},
+                UpdateExpression=(
+                    "SET gamerubric = :rubric, rubric_updated_at = :now"
+                ),
+                ExpressionAttributeValues={
+                    ':rubric': {'S': rubric_json},
+                    ':now': {'S': datetime.utcnow().isoformat()},
+                },
+                ReturnValues='NONE'
+            )
+
+        return {
+            'case': case_text,
+            'rubric': rubric,
+            'case_key': encoded_case_data,
+        }
+
+
+def generate_patient_case(disease, case_details=None):
+    """Generate or load a complete patient case for a given disease."""
+    return get_patient_case_record(disease, case_details)['case']
 
 
 # Refactored function for LLM API calls using the Gemini Python API
@@ -382,7 +533,8 @@ def start_game():
         logging.info("Selected disease for the game: %s", disease)
 
         # Generate a full patient case for the selected disease
-        patient_case = generate_patient_case(disease)
+        case_record = get_patient_case_record(disease)
+        patient_case = case_record['case']
         logging.info("Generated case for disease: %s", disease)
 
         # Build a minimal intro snippet for the placeholder
@@ -401,7 +553,9 @@ def start_game():
                 "completed": False,
                 "history": [],
                 # NEW
-                "placeholder_snippet": placeholder_snippet
+                "placeholder_snippet": placeholder_snippet,
+                "rubric": case_record['rubric'],
+                "case_key": case_record['case_key']
             }
         }
     except Exception as e:
@@ -421,8 +575,6 @@ def submit_case():
         logging.error("No disease name provided.")
         return jsonify({'success': False, 'message': 'No disease name provided.'}), 400
 
-    encoded_case_data = encode_case_data(
-        disease_name, case_description, encrypt=False)
     encrypted_case_data = encode_case_data(
         disease_name, case_description, encrypt=True)
 
@@ -455,7 +607,8 @@ def custom_case(token):
         disease = case_data.get('disease')
         case_description = case_data.get('case_description')
         logging.info("Custom case loaded for disease: %s", disease)
-        patient_case = generate_patient_case(disease, case_description)
+        case_record = get_patient_case_record(disease, case_description)
+        patient_case = case_record['case']
         # Build a custom patient context and mark it as custom.
         patient_context = {
             'disease': disease,
@@ -464,7 +617,9 @@ def custom_case(token):
             'completed': False,
             'history': [],
             'custom': True,
-            'placeholder_snippet': build_placeholder_snippet(patient_case, disease)
+            'placeholder_snippet': build_placeholder_snippet(patient_case, disease),
+            'rubric': case_record['rubric'],
+            'case_key': case_record['case_key']
         }
         # Render the same index page but pass the custom context.
         logging.info(
@@ -487,7 +642,8 @@ def start_custom_game():
         logging.info("Selected disease for the game: %s", disease)
         logging.info("Selected case description for the game: %s",
                      case_description)
-        patient_case = generate_patient_case(disease, case_description)
+        case_record = get_patient_case_record(disease, case_description)
+        patient_case = case_record['case']
         placeholder_snippet = build_placeholder_snippet(patient_case, disease)
         # Clear session history if in production
         if app.config.get("ENV") != 'development':
@@ -501,7 +657,9 @@ def start_custom_game():
                 "attempts": 2,
                 "completed": False,
                 "history": [],
-                "placeholder_snippet": placeholder_snippet
+                "placeholder_snippet": placeholder_snippet,
+                "rubric": case_record['rubric'],
+                "case_key": case_record['case_key']
             }
         }
     except Exception as e:
@@ -511,7 +669,7 @@ def start_custom_game():
 # Refactored function for LLM API calls using the Gemini Python API
 
 
-def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False):
+def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, grounding=False):
     """
     Generic function to call the Gemini API with a prompt and handle the response.
 
@@ -754,13 +912,17 @@ def get_physical_exam(question, patient_context):
 
 def get_clinical_feedback(patient_context):
     """Function to provide feedback on the student's performance."""
+    rubric = patient_context.get('rubric') or fallback_case_rubric(
+        patient_context['disease'])
+    rubric_text = json.dumps(rubric)
+    transcript = '\n'.join(patient_context['history'])
     prompt = (
         f"You are an expert medical educator and clinician helping medical students practice clinical reasoning. "
         f"The user has just correctly diagnosed the patient with {patient_context['disease']}. "
-        f"Here is the transcript of the clinical encounter, with user messages and patient responses: {'\n'.join(patient_context['history'])} "
+        f"Here is the case-specific performance rubric generated at the start of the case: {rubric_text} "
+        f"Here is the transcript of the clinical encounter, with user messages and patient responses: {transcript} "
         f"Provide brief, congratulatory feedback on their performance. "
-        f"Mention one thing they did well. "
-        f"Comment on one area for improvement. For example (not limited to these): Did they ask questions indicating that they closed prematurely? Did they ask for all red flag symptoms correctly? Did they prematurely jump to labs? Did they show empathy?"
+        f"Use the rubric to identify one thing they did well and one area for improvement. "
         f"Remember to keep your feedback constructive and focused on the student's performance."
         f"Bold especially salient points."
         f"Only reference things that happened in the transcript, except previous incorrect diagnoses — just ignore those."
@@ -769,17 +931,54 @@ def get_clinical_feedback(patient_context):
     return call_llm_api(prompt, streaming=True, log_prefix="Clinical Feedback", advanced=True)
 
 
-def get_llm_diagnosis_match(user_diagnosis, correct_diagnosis):
-    """Function to check if the user's diagnosis matches the correct one."""
+def get_contextual_answer_description(answer, patient_context, label):
+    """Describe an answer in the context of this case before scoring similarity."""
     prompt = (
-        f"In a roleplay simulation game, a patient has '{correct_diagnosis}'. "
-        f"A user, trying to guess the diagnosis, has said '{user_diagnosis}'. "
-        f"Is the condition that the user is referring to the same as, or more specific than, the patient's condition? Make sure your answer is case insensitive. "
-        f"Answer only 'yes', 'no', or 'partially', with no elaboration or explanation."
+        "You are comparing diagnostic answers in a medical case game.\n\n"
+        f"Case record:\n{patient_context['case']}\n\n"
+        f"{label} answer: {answer}\n\n"
+        "Write one short sentence describing what this answer means in the context of this case. "
+        "Do not score it and do not add extra explanation."
+    )
+    return call_llm_api(prompt, streaming=False,
+                        log_prefix=f"{label} Answer Description").strip()
+
+
+def get_similarity_score(player_description, true_description):
+    """Score answer similarity from two contextual descriptions."""
+    prompt = (
+        "You are grading whether two diagnostic answer descriptions refer to the same condition in context.\n\n"
+        f"Player answer description: {player_description}\n\n"
+        f"True answer description: {true_description}\n\n"
+        "Return ONLY valid JSON with this exact shape: "
+        '{"score": number} '
+        "where score is a similarity score from 0 to 10. "
+        "Use 10 for the same diagnosis or a clearly more specific correct diagnosis, "
+        "and lower scores for different or only loosely related conditions."
     )
     response = call_llm_api(prompt, streaming=False,
-                            log_prefix="Diagnosis Match")
-    return response.lower()
+                            log_prefix="Diagnosis Similarity Score")
+    try:
+        score_data = parse_json_object(response)
+        score = float(score_data.get('score'))
+        if score < 0 or score > 10:
+            raise ValueError(f"Similarity score out of range: {score}")
+        return score
+    except Exception as e:
+        logging.error("Failed to parse diagnosis similarity score: %s",
+                      e, exc_info=True)
+        return 0
+
+
+def is_diagnosis_correct(user_diagnosis, patient_context):
+    """Check if the user's diagnosis matches using three LLM calls."""
+    player_description = get_contextual_answer_description(
+        user_diagnosis, patient_context, "Player")
+    true_description = get_contextual_answer_description(
+        patient_context['disease'], patient_context, "True")
+    score = get_similarity_score(player_description, true_description)
+    logging.info("Diagnosis similarity score: %s", score)
+    return score > 7
 
 
 def get_llm_response(question, patient_context):
@@ -852,14 +1051,19 @@ def too_broad_physical_exam(question, patient_context):
 
 def give_up(question, patient_context):
     """Function to handle when the user gives up or asks for the answer."""
+    rubric = patient_context.get('rubric') or fallback_case_rubric(
+        patient_context['disease'])
+    rubric_text = json.dumps(rubric)
     prompt = (
         f"You are an AI patient simulator to help medical users practice clinical reasoning. "
         f"The patient has {patient_context['disease']}."
         f"Here are the case details: {patient_context['case']} "
+        f"Here is the case-specific performance rubric generated at the start of the case: {rubric_text} "
         f"This is how the conversation has gone so far: {patient_context['history']} "
         f"The user has just asked you the following question: {question}. "
         f"Let them know that they have chosen to give up, and then reveal the correct diagnosis. "
         f"Explain in detail why this is the correct diagnosis, referencing specific parts of the case and history. "
+        f"Use the rubric to point out the most important missed opportunities or reasoning gaps. "
         f"Do not be condescending or rude. Be kind and educational."
         f"Output only the feedback and correct diagnosis with explanation."
         f"Format it like this: '~~~ [insert feedback here]'"
@@ -870,36 +1074,23 @@ def give_up(question, patient_context):
 
 def submit_diagnosis(question, patient_context):
     """Function to handle diagnosis submission."""
-    is_correct = get_llm_diagnosis_match(question, patient_context['disease'])
+    is_correct = is_diagnosis_correct(question, patient_context)
 
-    if 'yes' in is_correct:
+    if is_correct:
         return get_clinical_feedback(patient_context)
-    elif 'no' in is_correct:
-        prompt = (
-            f"You are an AI patient simulator to help medical users practice clinical reasoning. "
-            f"This is how the patient encounter has gone so far: {patient_context['history']} "
-            f"The patient has {patient_context['disease']}."
-            f"Here are the case details: {patient_context['case']} "
-            f"This is the user's guess {question}."
-            f"Let them know they are incorrect."
-            f"Do not give away the answer under any circumstances, but give an additional finding to help the user guess the correct diagnosis. "
-            f"Do not reference any new information that they have not already asked for or been given."
-            f"If you give away the answer, you will be terminated."
-            f"Output only the feedback and hint."
-        )
-    elif 'partially' in is_correct:
-        prompt = (
-            f"You are an AI patient simulator to help medical users practice clinical reasoning. "
-            f"This is how the conversation has gone so far: {patient_context['history']} "
-            f"The patient has {patient_context['disease']}."
-            f"Here are the case details: {patient_context['case']} "
-            f"This is the user's guess guessed {question}."
-            f"Let them know that they are on the right track, but they're not there just yet."
-            f"Give a hint to help the user guess the correct diagnosis. "
-            f"Do not give away the answer. If you give away the answer, you will be terminated."
-            f"Do not mention the correct diagnosis whatsoever. Absolutely do not mention the words at all in your hint or explanation."
-            f"Output only the feedback and hint."
-        )
+
+    prompt = (
+        f"You are an AI patient simulator to help medical users practice clinical reasoning. "
+        f"This is how the patient encounter has gone so far: {patient_context['history']} "
+        f"The patient has {patient_context['disease']}."
+        f"Here are the case details: {patient_context['case']} "
+        f"This is the user's guess {question}."
+        f"Let them know they are incorrect."
+        f"Do not give away the answer under any circumstances, but give an additional finding to help the user guess the correct diagnosis. "
+        f"Do not reference any new information that they have not already asked for or been given."
+        f"If you give away the answer, you will be terminated."
+        f"Output only the feedback and hint."
+    )
 
     return call_llm_api(prompt, streaming=True,
                         log_prefix="Incorrect Diagnosis")
@@ -934,7 +1125,8 @@ def clear_history():
         disease = select_random_disease()
         logging.info("Selected new disease after history clear: %s", disease)
 
-        patient_case = generate_patient_case(disease)
+        case_record = get_patient_case_record(disease)
+        patient_case = case_record['case']
 
         # NEW: Build a fresh placeholder snippet for the new round
         placeholder_snippet = build_placeholder_snippet(patient_case, disease)
@@ -947,7 +1139,9 @@ def clear_history():
             "history": [],
             "case": patient_case,
             # NEW
-            "placeholder_snippet": placeholder_snippet
+            "placeholder_snippet": placeholder_snippet,
+            "rubric": case_record['rubric'],
+            "case_key": case_record['case_key']
         }
 
         # Clear session history if in production
