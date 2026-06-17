@@ -30,8 +30,8 @@ API_KEY = os.getenv('GOOGLE_API_KEY')
 
 # Configure the Gemini API
 genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-2.5-flash-lite')
-advanced_model = genai.GenerativeModel('gemini-2.5-flash')
+model = genai.GenerativeModel('gemini-3.5-flash')
+advanced_model = genai.GenerativeModel('gemini-3.5-flash')
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -278,7 +278,7 @@ def generate_patient_case(disease, case_details=None):
     )
     if not case['Items']:
         print("Case does not exist in DynamoDB, generating a new one.")
-        medrag = MedRAG(llm_name="Google/gemini-2.5-flash", rag=True, follow_up=True,
+        medrag = MedRAG(llm_name="Google/gemini-3.5-flash", rag=True, follow_up=True,
                         retriever_name="MedCPT", corpus_name="MedText", corpus_cache=True)
         new_case = medrag.generate_medical_case(disease, case_details)
         dynamodb.put_item(
@@ -426,7 +426,7 @@ def submit_case():
     encrypted_case_data = encode_case_data(
         disease_name, case_description, encrypt=True)
 
-    medrag = MedRAG(llm_name="Google/gemini-2.0-flash", rag=True, follow_up=True,
+    medrag = MedRAG(llm_name="Google/gemini-3.5-flash", rag=True, follow_up=True,
                     retriever_name="MedCPT", corpus_name="MedText", corpus_cache=True)
 
     dynamodb.put_item(
