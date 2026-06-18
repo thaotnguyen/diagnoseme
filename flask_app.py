@@ -9,7 +9,7 @@ from boto3.dynamodb.conditions import Key, Attr
 # Import the new function
 from disease_selector import select_random_disease, select_disease_by_criteria
 from flask_cors import CORS
-import google.generativeai as genai
+from google import genai
 import urllib.parse  # Importing urllib for URL encoding
 from url_shortener import encode_case_data, decode_case_data
 from dotenv import load_dotenv
@@ -25,9 +25,9 @@ logging.basicConfig(level=logging.INFO)
 
 API_KEY = os.getenv('GOOGLE_API_KEY')
 
-genai.configure(api_key=API_KEY)
-model = genai.GenerativeModel('gemini-3.5-flash')
-advanced_model = genai.GenerativeModel('gemini-3.5-flash')
+client = genai.Client(api_key=API_KEY)
+MODEL_NAME = 'gemini-3.5-flash'
+ADVANCED_MODEL_NAME = 'gemini-3.5-flash'
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -463,18 +463,14 @@ def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, groundi
         logging.info(
             f"{log_prefix} - Sending prompt to Gemini: {prompt[:100]}...")
 
+        model_name = ADVANCED_MODEL_NAME if advanced else MODEL_NAME
+
         if streaming:
             def generate():
-                if advanced:
-                    response = advanced_model.generate_content(
-                        prompt,
-                        stream=True,
-                    )
-                else:
-                    response = model.generate_content(
-                        prompt,
-                        stream=True,
-                    )
+                response = client.models.generate_content_stream(
+                    model=model_name,
+                    contents=prompt,
+                )
                 for chunk in response:
                     if chunk.text:
                         yield f"{chunk.text}\n\n\n"
@@ -482,10 +478,10 @@ def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, groundi
 
             return Response(stream_with_context(generate()), mimetype='text/event-stream')
         else:
-            if advanced:
-                response = advanced_model.generate_content(prompt)
-            else:
-                response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
             logging.info(f"{log_prefix} - Received response from Gemini")
             return response.text
     except Exception as e:
@@ -685,18 +681,14 @@ def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, groundi
         logging.info(
             f"{log_prefix} - Sending prompt to Gemini: {prompt[:100]}...")
 
+        model_name = ADVANCED_MODEL_NAME if advanced else MODEL_NAME
+
         if streaming:
             def generate():
-                if advanced:
-                    response = advanced_model.generate_content(
-                        prompt,
-                        stream=True
-                    )
-                else:
-                    response = model.generate_content(
-                        prompt,
-                        stream=True
-                    )
+                response = client.models.generate_content_stream(
+                    model=model_name,
+                    contents=prompt,
+                )
                 for chunk in response:
                     if chunk.text:
                         yield f"{chunk.text}\n\n\n"
@@ -704,10 +696,10 @@ def call_llm_api(prompt, streaming=False, log_prefix="", advanced=False, groundi
 
             return Response(stream_with_context(generate()), mimetype='text/event-stream')
         else:
-            if advanced:
-                response = advanced_model.generate_content(prompt)
-            else:
-                response = model.generate_content(prompt)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt,
+            )
             logging.info(f"{log_prefix} - Received response from Gemini")
             return response.text
     except Exception as e:
